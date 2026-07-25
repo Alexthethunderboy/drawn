@@ -1,0 +1,210 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #171714;
+  --paper: #f3f0e8;
+  --paper-deep: #e8e2d6;
+  --acid: #d8ff3e;
+  --muted: #6d6a62;
+  --line: rgba(23, 23, 20, 0.17);
+  --music-accent: #d8ff3e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ink);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 86% 10%, rgba(216, 255, 62, 0.13), transparent 24rem),
+    var(--paper);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 3px;
+}
+
+::selection {
+  color: var(--ink);
+  background: var(--acid);
+}
+
+.display-serif {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+}
+
+.media-card {
+  box-shadow: 0 28px 70px rgba(28, 27, 22, 0.2);
+}
+
+.poster-skeleton {
+  background:
+    linear-gradient(115deg, transparent 35%, rgba(255,255,255,.35) 48%, transparent 61%),
+    var(--paper-deep);
+  background-size: 220% 100%;
+  animation: shimmer 1.25s infinite linear;
+}
+
+.poster-fallback {
+  background:
+    linear-gradient(145deg, rgba(216, 255, 62, 0.85), rgba(216, 255, 62, 0.05) 48%),
+    repeating-linear-gradient(
+      135deg,
+      var(--ink),
+      var(--ink) 14px,
+      #292925 14px,
+      #292925 28px
+    );
+}
+
+.loading-line {
+  overflow: hidden;
+  position: relative;
+  background: #ded9ce;
+}
+
+.loading-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  animation: shimmer-line 1.15s infinite;
+}
+
+.synopsis-clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+}
+
+.music-card {
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.42);
+}
+
+.music-art-fallback {
+  background:
+    radial-gradient(circle at 25% 20%, rgba(216, 255, 62, 0.25), transparent 32%),
+    linear-gradient(145deg, #302f32, #111110);
+}
+
+.music-record {
+  position: relative;
+  width: min(68%, 22rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    repeating-radial-gradient(
+      circle,
+      #151515 0,
+      #151515 4px,
+      #262626 5px,
+      #171717 7px
+    );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 28px 50px rgba(0, 0, 0, 0.42);
+}
+
+.music-record::before {
+  content: "";
+  position: absolute;
+  inset: 34%;
+  border-radius: 999px;
+  background: var(--music-accent);
+}
+
+.music-record span {
+  position: absolute;
+  inset: 47%;
+  border-radius: 999px;
+  background: #0d0d0c;
+  z-index: 1;
+}
+
+.music-wave {
+  display: flex;
+  height: 4.5rem;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.music-wave span {
+  display: block;
+  width: 3px;
+  min-width: 3px;
+  background: linear-gradient(
+    to top,
+    var(--music-accent),
+    rgba(216, 255, 62, 0.16)
+  );
+}
+
+.music-page select {
+  color-scheme: dark;
+}
+
+.music-auth > span,
+.music-auth > div > button {
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.78);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.music-page audio {
+  color-scheme: dark;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes shimmer-line {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
