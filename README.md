@@ -1,8 +1,8 @@
 # Pickfilm
 
 A server-randomized media and music picker built with Next.js App Router,
-React, Tailwind CSS, Supabase, and a deliberately broad set of ranking
-providers.
+React, Tailwind CSS, a lightweight username/PIN profile system, and a
+deliberately broad set of ranking providers.
 
 ## Chart routing
 
@@ -12,18 +12,23 @@ providers.
 | Trakt Popular | ✓ | ✓ | — | ✓ | Trakt popularity (rating percentage + rating volume) |
 | Trakt Trending | ✓ | ✓ | — | ✓ | Most watched over the last 24 hours |
 | Rotten Tomatoes 80%+ | ✓ | — | — | ✓ | Trakt `rt_meters=80-100` filter |
-| IMDb Top 250 · exact | ✓ | — | — | — | Literal chart through a configurable RapidAPI proxy |
+| IMDb Top 1000 | ✓ | — | — | — | Paginated dataset through the selected RapidAPI provider |
 | IMDb 8.0+ | ✓ | ✓ | — | ✓ | Trakt `imdb_ratings=8.0-10.0` and 25k+ vote filter |
 | Metacritic 80+ | ✓ | — | — | ✓ | Trakt `metascores=80-100` filter |
 | TMDb Popular | ✓ | ✓ | — | ✓ | Native TMDb list/discover ordering |
 | TMDb Top Rated | ✓ | ✓ | — | ✓ | Native TMDb list/discover ordering with a vote floor |
 | MyAnimeList Top | — | — | ✓ | — | Jikan `/v4/top/anime` |
 | MyAnimeList Popular | — | — | ✓ | — | Jikan top anime with `filter=bypopularity` |
+| Letterboxd Most Fans 250 | ✓ | — | — | — | Complete official list snapshot |
+| Rotten Tomatoes Anime 100 | — | — | ✓ | — | Exact editorial list with Tomatometer scores |
+| IMDb Animated 35 | — | — | ✓ | — | Exact supplied IMDb list |
+| Rotten Tomatoes Docs 100 | — | — | — | ✓ | Exact editorial ranking |
+| Letterboxd Documentary 250 | — | — | — | ✓ | Complete official list snapshot |
 
 The UI intentionally does **not** call the Trakt RT filter “Certified Fresh.”
 Certified Fresh is a Rotten Tomatoes designation with criteria beyond a simple
-Tomatometer threshold. Likewise, IMDb 8.0+ is a live filtered pool, not the
-literal Top 250; the RapidAPI chart is the exact-list mode.
+Tomatometer threshold. Likewise, IMDb 8.0+ is a live filtered pool, while the
+RapidAPI source is the separate Top 1000 dataset selected for this project.
 
 ## Local setup
 
@@ -33,51 +38,55 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Jikan needs no key, so Anime works immediately. Add any combination of the
-following providers; “All charts” skips unconfigured or temporarily failed
-sources and uses all successful ones:
+The browser-verified local lists need no key, so Movies, Anime, Docs, Music,
+and Books work immediately. Add any combination of the following providers;
+“All charts” skips unconfigured or temporarily failed sources and uses all
+successful ones:
 
 - `TRAKT_CLIENT_ID`: the client ID from a Trakt API application.
 - `TMDB_ACCESS_TOKEN`: the TMDb API Read Access Token (Bearer token).
-- `RAPIDAPI_KEY`: enables the exact IMDb Top 250 provider.
-- `RAPIDAPI_IMDB_HOST` and `RAPIDAPI_IMDB_TOP250_PATH`: override these when
-  your chosen IMDb RapidAPI provider uses a different host or endpoint.
+- `RAPIDAPI_KEY`: enables the IMDb Top 1000 provider after that API is
+  subscribed to in RapidAPI.
+- `RAPIDAPI_IMDB_HOST`: the selected provider host.
+- `RAPIDAPI_IMDB_TOP1000_PATH`: the paginated path template
+  (`/list/{page}`).
+- `RAPIDAPI_IMDB_PAGE_COUNT`: the provider's page count. The default `100`
+  assumes ten records per page and can be corrected if the subscribed response
+  uses a different page size.
 - `OMDB_API_KEY`: optional. Enriches the one selected title with actual IMDb,
   Rotten Tomatoes, and Metacritic badge values.
 
-All secrets stay server-side. Only the two `NEXT_PUBLIC_SUPABASE_*` values are
-exposed to the browser, as intended by Supabase.
+All provider secrets stay server-side.
 
-## Supabase watchlist
+## Username/PIN profiles
 
-1. Create a Supabase project.
-2. Run
-   [`supabase/migrations/202607250001_create_watchlist.sql`](supabase/migrations/202607250001_create_watchlist.sql)
-   in the SQL editor or through the Supabase CLI.
-3. Set:
+Pickfilm uses a small Cloudflare D1 database rather than Supabase. A visitor can
+create a username with a 4–8 digit PIN, sign in on another device, and access
+the same saved movies, shows, anime, documentaries, and tracks. PINs are salted
+and PBKDF2-hashed before storage; sessions use an HTTP-only, same-site cookie.
+Five incorrect PIN attempts lock sign-in for 15 minutes.
 
-   ```dotenv
-   NEXT_PUBLIC_SUPABASE_URL=
-   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-   ```
+There is intentionally no email collection or recovery flow. This lightweight
+profile system is appropriate for a media watchlist, not sensitive personal
+data. Usernames and lost PINs cannot currently be recovered.
 
-4. Add `http://localhost:3000/auth/callback` (and the production equivalent)
-   to the Auth redirect URL allow-list.
-
-The migration enables RLS and defines owner-only select, insert, update, and
-delete policies. Saving uses an upsert on `(user_id, media_key)`, so the same
-title is not duplicated.
+The D1 schema lives in `db/schema.ts`, with generated migrations in `drizzle/`.
+Runtime initialization also creates missing tables for local development.
+Existing browser-local saves from `pickfilm.watchlist.v1` are migrated into the
+first profile used in that browser.
 
 ## Server flow
 
 `GET /api/roll?category=movies&source=all`:
 
 1. validates the category/source compatibility matrix;
-2. queries each relevant upstream server-side with timeouts and response-shape
-   checks;
+2. reads exact local rankings and queries relevant live upstreams server-side
+   with timeouts and response-shape checks;
 3. caps blended provider pools equally and deduplicates by external IDs/title;
 4. chooses a uniform random index using rejection sampling over Web Crypto;
-5. enriches only the chosen item through TMDb and OMDb when configured.
+5. enriches only the chosen item through TMDb and OMDb when configured,
+   including poster/backdrop artwork, synopsis, runtime, genres, ratings,
+   certification, release date, creators, cast, and trailer links.
 
 List fetches use provider-appropriate revalidation while every roll response
 uses `no-store`, keeping the chart data efficient and the selection fresh.
@@ -90,6 +99,8 @@ npm test
 npm run build
 ```
 
+`npm run dev` uses Vinext so the local D1 binding is available.
+
 ## Provider references
 
 - [Trakt API filters](https://docs.trakt.tv/docs/filters)
@@ -97,46 +108,65 @@ npm run build
 - [TMDb movie discover](https://developer.themoviedb.org/reference/discover-movie)
 - [TMDb TV discover](https://developer.themoviedb.org/reference/discover-tv)
 - [Jikan v4](https://docs.api.jikan.moe/)
-- [IMDb Top 250](https://www.imdb.com/chart/top/)
+- [IMDb Top 1000 search](https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating%2Cdesc)
+- [Selected IMDb Top 1000 RapidAPI](https://rapidapi.com/robotfa-robotfa-default/api/imdb-top-1000-movies-series)
 - [OMDb API](https://www.omdbapi.com/)
-- [Supabase SSR clients](https://supabase.com/docs/guides/auth/server-side/creating-a-client)
-- [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## Music
 
-The dedicated `/music` page rolls songs from:
+The dedicated `/music` page rolls songs and albums from:
 
 | Chart | Credential | Meaning |
 | --- | --- | --- |
+| Rolling Stone 500 Albums | None | Complete browser-verified all-time ranking stored locally |
 | ListenBrainz week | None | Sitewide top recordings for the current week |
 | ListenBrainz month | None | Sitewide top recordings for the current month |
 | ListenBrainz all time | None | Sitewide all-time recording chart |
-| Last.fm Global Top Tracks | `LASTFM_API_KEY` | Current Last.fm global chart |
-| Apple Music Top Songs | `APPLE_MUSIC_DEVELOPER_TOKEN` | Most-played songs for `APPLE_MUSIC_STOREFRONT` |
 
-“All charts” gives every successful source the same candidate cap before
-deduplication. The no-key iTunes Search API enriches only the selected song
-with artwork, duration, Apple Music links, and a stream-only preview; it is
-never treated as a chart.
+“All charts” blends the stored album canon with three worldwide,
+credential-free ListenBrainz periods before deduplication. If ListenBrainz is
+unavailable, the Rolling Stone catalog keeps the roll functional. The no-key
+iTunes Search API enriches only the selected song or album with artwork and an
+Apple Music link; track previews are added when available.
 
 When `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` are configured, the
 server also matches each selected chart track against Spotify and adds its
-canonical album metadata and “Open in Spotify” link. `SPOTIFY_MARKET` defaults
-to `US`. Spotify is enrichment rather than a chart source because the current
-Development Mode Web API does not expose a public global chart or the contents
-of Spotify-owned playlists.
+canonical album metadata and “Open in Spotify” link. `SPOTIFY_MARKET` and
+`ITUNES_STOREFRONT` default to `US` only for catalog availability; neither
+setting influences the worldwide chart ranking. Spotify is enrichment rather
+than a chart source because the current Development Mode Web API does not
+expose a public global chart or the contents of Spotify-owned playlists.
 
-For existing Supabase projects, apply
-[`supabase/migrations/202607250002_extend_watchlist_for_music.sql`](supabase/migrations/202607250002_extend_watchlist_for_music.sql)
-so saved tracks are accepted by the watchlist constraints.
+Tracks and albums use the same profile-backed Saved menu as movies and shows.
+
+## Books
+
+The `/books` page uses two exact, browser-verified local sources:
+
+| List | Local entries |
+| --- | ---: |
+| Goodreads Best Selling Books of All Time | 100 |
+| The Greatest Books, supplied page 2 | 25 (ranks 26–50) |
+
+Open Library is optional metadata enrichment for the one selected book. An
+Open Library outage cannot block a roll.
+
+## Browser-verified catalogs
+
+`data/curated-lists.json` contains ranks and essential factual metadata from
+the supplied Letterboxd, Rotten Tomatoes, IMDb, Goodreads, The Greatest Books,
+and Rolling Stone pages. Tests enforce exact contiguous ordering for all eight
+catalogs, including ranks 1–500 for Rolling Stone and both Letterboxd Top 250
+lists. Editorial prose is not copied into the catalog.
 
 Music references:
 
 - [ListenBrainz sitewide recording statistics](https://listenbrainz.readthedocs.io/en/latest/users/api/statistics.html)
-- [Last.fm global top tracks](https://www.last.fm/api/show/chart.getTopTracks)
-- [Apple Music catalog charts](https://developer.apple.com/documentation/applemusicapi/charts)
 - [iTunes Search API](https://performance-partners.apple.com/search-api)
 - [Spotify Client Credentials flow](https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow)
 - [Spotify Search endpoint](https://developer.spotify.com/documentation/web-api/reference/search)
+- [Rolling Stone 500 Greatest Albums](https://www.rollingstone.com/music/music-lists/best-albums-of-all-time-1062063/)
+- [Goodreads Best Selling Books of All Time](https://www.goodreads.com/list/show/33934.Best_Selling_Books_of_All_Time)
+- [The Greatest Books](https://thegreatestbooks.org/page/2)

@@ -1,10 +1,9 @@
 export const MUSIC_SOURCE_IDS = [
   "all",
+  "rolling-stone-500",
   "listenbrainz-week",
   "listenbrainz-month",
   "listenbrainz-all-time",
-  "lastfm-global",
-  "apple-top-songs",
 ] as const;
 
 export type MusicSourceId = (typeof MUSIC_SOURCE_IDS)[number];
@@ -26,9 +25,9 @@ export interface TrackStats {
 export interface TrackExternalIds {
   recordingMbid?: string;
   releaseMbid?: string;
-  lastfmUrl?: string;
   appleMusicId?: string;
   spotifyTrackId?: string;
+  spotifyAlbumId?: string;
   isrc?: string;
 }
 
@@ -38,6 +37,8 @@ export interface TrackItem {
   title: string;
   artist: string;
   album?: string;
+  year?: number;
+  recordLabel?: string;
   artworkUrl?: string;
   previewUrl?: string;
   externalUrl?: string;
@@ -52,8 +53,8 @@ export interface TrackItem {
   sourceNote: string;
   rank?: number;
 
-  // Shared watchlist contract.
-  mediaType: "track";
+  // Shared saved-item contract.
+  mediaType: "track" | "album";
   category: "music";
   synopsis: string;
   ratings: Record<string, never>;
@@ -62,5 +63,6 @@ export interface TrackItem {
 export interface MusicRollResponse {
   item: TrackItem;
   poolSize: number;
+  artistPoolSize: number;
   generatedAt: string;
 }

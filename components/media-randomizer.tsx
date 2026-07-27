@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AuthControl } from "@/components/auth-control";
+import { useWatchlist } from "@/components/app-providers";
+import { SiteHeader } from "@/components/site-header";
 import {
   CATEGORY_LABELS,
   getSourcesForCategory,
@@ -16,125 +17,130 @@ import type {
 
 interface ApiError {
   error?: string;
-  code?: string;
 }
 
-function DiceIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="size-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
-      <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
-      <circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
-      <circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" />
-      <circle cx="16" cy="16" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
+function formatReleaseDate(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(parsed);
 }
 
-function BookmarkIcon({ filled = false }: { filled?: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="size-4"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <path d="M6 4.8A1.8 1.8 0 0 1 7.8 3h8.4A1.8 1.8 0 0 1 18 4.8V21l-6-3.8L6 21V4.8Z" />
-    </svg>
-  );
-}
+function PosterArtwork({ item }: { item: MediaItem }) {
+  const [broken, setBroken] = useState(false);
 
-function ArrowIcon() {
+  useEffect(() => setBroken(false), [item.mediaKey, item.posterUrl]);
+
+  if (item.posterUrl && !broken) {
+    return (
+      <img
+        src={item.posterUrl}
+        alt={`${item.title} poster`}
+        width={500}
+        height={750}
+        className="absolute inset-0 size-full object-cover"
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+
   return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <path d="M5 12h13M13 6l6 6-6 6" />
-    </svg>
+    <div className="pf-poster-fallback absolute inset-0 flex flex-col justify-end p-7">
+      <span className="pf-kicker text-[var(--lime)]">Poster unavailable</span>
+      <p className="display-serif mt-3 max-w-[10ch] text-4xl font-bold leading-[0.9] text-white">
+        {item.title}
+      </p>
+    </div>
   );
 }
 
 function RatingBadges({ item }: { item: MediaItem }) {
   const ratings = [
     item.ratings.rottenTomatoes !== undefined && {
-      label: "RT",
+      label: "Rotten Tomatoes",
       value: `${Math.round(item.ratings.rottenTomatoes)}%`,
-      tone: "bg-[#e53935] text-white",
+      accent: "#ff5c57",
     },
     item.ratings.imdb !== undefined && {
       label: "IMDb",
       value: item.ratings.imdb.toFixed(1),
-      tone: "bg-[#f5c518] text-black",
+      accent: "#f5c518",
     },
     item.ratings.metacritic !== undefined && {
-      label: "META",
+      label: "Metacritic",
       value: String(Math.round(item.ratings.metacritic)),
-      tone: "bg-[#57a773] text-white",
+      accent: "#66cf84",
     },
     item.ratings.trakt !== undefined && {
-      label: "TRAKT",
+      label: "Trakt",
       value: item.ratings.trakt.toFixed(1),
-      tone: "bg-[#ed1c24] text-white",
+      accent: "#ed1c24",
     },
     item.ratings.tmdb !== undefined && {
       label: "TMDb",
       value: item.ratings.tmdb.toFixed(1),
-      tone: "bg-[#082541] text-[#90cea1]",
+      accent: "#68d7c2",
     },
     item.ratings.mal !== undefined && {
-      label: "MAL",
+      label: "MyAnimeList",
       value: item.ratings.mal.toFixed(2),
-      tone: "bg-[#2e51a2] text-white",
+      accent: "#7ca8ff",
     },
-  ].filter(Boolean) as { label: string; value: string; tone: string }[];
+  ].filter(Boolean) as { label: string; value: string; accent: string }[];
 
   if (ratings.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-2" aria-label="Ratings">
       {ratings.map((rating) => (
-        <span
-          key={rating.label}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-black tracking-wide ${rating.tone}`}
-        >
-          <span className="opacity-75">{rating.label}</span>
-          {rating.value}
+        <span key={rating.label} className="pf-rating">
+          <i style={{ backgroundColor: rating.accent }} />
+          <span>{rating.label}</span>
+          <strong>{rating.value}</strong>
         </span>
       ))}
     </div>
   );
 }
 
+function Detail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | undefined;
+}) {
+  if (!value) return null;
+  return (
+    <div className="pf-detail">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
 function LoadingCard() {
   return (
-    <div className="media-card grid min-h-[34rem] overflow-hidden border border-black/15 bg-[#f8f5ed] md:grid-cols-[minmax(16rem,0.78fr)_1.22fr]">
-      <div className="poster-skeleton min-h-[26rem] md:min-h-full" />
-      <div className="flex flex-col p-6 md:p-10">
-        <div className="loading-line mb-8 h-5 w-28 rounded-full" />
-        <div className="loading-line mb-3 h-12 w-11/12" />
-        <div className="loading-line mb-8 h-12 w-3/5" />
-        <div className="loading-line mb-3 h-3 w-full" />
-        <div className="loading-line mb-3 h-3 w-10/12" />
-        <div className="loading-line h-3 w-8/12" />
-        <div className="mt-auto flex gap-3 pt-10">
-          <div className="loading-line h-11 w-32" />
-          <div className="loading-line h-11 w-32" />
+    <div className="pf-feature-card grid min-h-[39rem] overflow-hidden lg:grid-cols-[minmax(17rem,22rem)_1fr]">
+      <div className="poster-skeleton aspect-[2/3] lg:aspect-auto" />
+      <div className="flex flex-col p-6 sm:p-9 lg:p-12">
+        <div className="loading-line mb-8 h-4 w-32" />
+        <div className="loading-line mb-3 h-14 w-10/12" />
+        <div className="loading-line mb-10 h-14 w-7/12" />
+        <div className="flex gap-2">
+          <div className="loading-line h-8 w-28" />
+          <div className="loading-line h-8 w-24" />
         </div>
+        <div className="mt-10 space-y-3">
+          <div className="loading-line h-3 w-full" />
+          <div className="loading-line h-3 w-11/12" />
+          <div className="loading-line h-3 w-8/12" />
+        </div>
+        <div className="loading-line mt-auto h-12 w-44" />
       </div>
     </div>
   );
@@ -148,21 +154,17 @@ function EmptyCard({
   onRetry: () => void;
 }) {
   return (
-    <div className="media-card grid min-h-[34rem] place-items-center border border-black/15 bg-[#f8f5ed] p-8 text-center">
-      <div className="max-w-lg">
-        <span className="mb-6 inline-grid size-14 place-items-center rounded-full bg-black text-[var(--acid)]">
-          <DiceIcon />
+    <div className="pf-feature-card grid min-h-[34rem] place-items-center p-8 text-center">
+      <div className="max-w-md">
+        <span className="mx-auto grid size-14 place-items-center rounded-full border border-white/15 bg-white/5 text-2xl text-[var(--lime)]">
+          ↻
         </span>
-        <h2 className="display-serif mb-3 text-3xl font-bold">
+        <h2 className="display-serif mt-6 text-4xl font-bold text-white">
           This chart came up empty.
         </h2>
-        <p className="mb-6 text-sm leading-7 text-black/60">{error}</p>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="bg-[var(--ink)] px-6 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-black/80"
-        >
-          Try again
+        <p className="mt-3 text-sm leading-7 text-white/50">{error}</p>
+        <button type="button" onClick={onRetry} className="pf-button pf-button-primary mt-7">
+          Try another roll
         </button>
       </div>
     </div>
@@ -180,28 +182,22 @@ function ResultCard({
   onRoll: () => void;
   loading: boolean;
 }) {
-  const [saved, setSaved] = useState(false);
+  const { isSaved, save } = useWatchlist();
   const [saveMessage, setSaveMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const saved = isSaved(item.mediaKey);
+  const release = formatReleaseDate(item.releaseDate);
+  const creatorsLabel =
+    item.mediaType === "movie" ? "Directed by" : "Created by";
 
-  useEffect(() => {
-    setSaved(false);
-    setSaveMessage("");
-  }, [item.mediaKey]);
+  useEffect(() => setSaveMessage(""), [item.mediaKey]);
 
   async function saveToWatchlist() {
     setSaving(true);
     setSaveMessage("");
     try {
-      const response = await fetch("/api/watchlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item }),
-      });
-      const payload = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Could not save.");
-      setSaved(true);
-      setSaveMessage("Saved to your watchlist.");
+      await save(item);
+      setSaveMessage("Saved to your profile.");
     } catch (error) {
       setSaveMessage(
         error instanceof Error ? error.message : "Could not save this title.",
@@ -213,107 +209,140 @@ function ResultCard({
 
   const facts = [
     item.year,
+    item.contentRating,
     item.runtimeMinutes && `${item.runtimeMinutes} min`,
-    item.genres.slice(0, 2).join(" · "),
+    item.seasonCount &&
+      `${item.seasonCount} ${item.seasonCount === 1 ? "season" : "seasons"}`,
+    item.episodeCount &&
+      `${item.episodeCount} ${item.episodeCount === 1 ? "episode" : "episodes"}`,
+    ...item.genres.slice(0, 3),
   ].filter(Boolean);
 
   return (
-    <article className="media-card grid min-h-[34rem] overflow-hidden border border-black/15 bg-[#f8f5ed] md:grid-cols-[minmax(16rem,0.78fr)_1.22fr]">
-      <div className="relative min-h-[28rem] overflow-hidden bg-black md:min-h-full">
-        {item.posterUrl ? (
-          <img
-            src={item.posterUrl}
-            alt={`${item.title} poster`}
-            className="absolute inset-0 size-full object-cover"
-          />
-        ) : (
-          <div className="poster-fallback absolute inset-0 flex items-end p-7">
-            <p className="display-serif max-w-[10ch] text-5xl font-black leading-[0.88] text-white">
-              {item.title}
+    <article className="pf-feature-card relative overflow-hidden">
+      {(item.backdropUrl ?? item.posterUrl) && (
+        <img
+          src={item.backdropUrl ?? item.posterUrl}
+          alt=""
+          className="absolute inset-0 size-full scale-105 object-cover opacity-20 blur-[1px]"
+        />
+      )}
+      <div className="pf-feature-wash absolute inset-0" />
+
+      <div className="relative grid lg:grid-cols-[minmax(17rem,22rem)_1fr]">
+        <div className="relative aspect-[2/3] overflow-hidden bg-[#11130f] lg:aspect-auto lg:min-h-[43rem]">
+          <PosterArtwork item={item} />
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
+            <span className="pf-source-chip">{item.sourceLabel}</span>
+            {item.rank && <span className="pf-rank">Chart #{item.rank}</span>}
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col p-6 sm:p-9 lg:p-12">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="pf-kicker text-[var(--lime)]">
+              Your pick · {CATEGORY_LABELS[item.category]}
+            </p>
+            <p className="pf-kicker text-white/30">
+              Randomized from {poolSize} titles
             </p>
           </div>
-        )}
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/70 to-transparent p-4 text-white">
-          <span className="bg-[var(--acid)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-black">
-            {item.sourceLabel}
-          </span>
-          {item.rank && (
-            <span className="text-xs font-bold tracking-wide">#{item.rank}</span>
+
+          <h2 className="display-serif mt-6 max-w-[16ch] text-[clamp(2.75rem,7vw,5.5rem)] font-bold leading-[0.88] tracking-[-0.05em] text-white">
+            {item.title}
+          </h2>
+          {item.tagline && (
+            <p className="display-serif mt-4 max-w-2xl text-lg italic leading-7 text-white/52">
+              “{item.tagline}”
+            </p>
           )}
-        </div>
-      </div>
 
-      <div className="flex min-w-0 flex-col p-6 sm:p-8 md:p-10">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/45">
-            Today’s pick · {CATEGORY_LABELS[item.category]}
-          </p>
-          <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.14em] text-black/35">
-            1 of {poolSize}
-          </span>
-        </div>
-
-        <h1 className="display-serif max-w-[18ch] text-[clamp(2.4rem,7vw,4.7rem)] font-bold leading-[0.92] tracking-[-0.045em]">
-          {item.title}
-        </h1>
-
-        {facts.length > 0 && (
-          <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.15em] text-black/45">
-            {facts.join("  /  ")}
-          </p>
-        )}
-
-        <div className="mt-6">
-          <RatingBadges item={item} />
-        </div>
-
-        <p className="synopsis-clamp mt-7 max-w-2xl text-sm leading-7 text-black/66 sm:text-[15px]">
-          {item.synopsis}
-        </p>
-
-        <p className="mt-5 border-l-2 border-[var(--acid)] pl-3 text-[11px] leading-5 text-black/45">
-          {item.sourceNote}
-        </p>
-
-        <div className="mt-auto flex flex-wrap items-center gap-3 pt-8">
-          <button
-            type="button"
-            onClick={onRoll}
-            disabled={loading}
-            className="inline-flex items-center gap-2 bg-[var(--ink)] px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-white transition hover:bg-black/80 disabled:cursor-wait disabled:opacity-60"
-          >
-            <DiceIcon />
-            {loading ? "Rolling…" : "Roll again"}
-          </button>
-          <button
-            type="button"
-            onClick={saveToWatchlist}
-            disabled={saving || saved}
-            className="inline-flex items-center gap-2 border border-black/20 px-5 py-3 text-xs font-black uppercase tracking-[0.12em] transition hover:bg-black/5 disabled:opacity-55"
-          >
-            <BookmarkIcon filled={saved} />
-            {saved ? "Saved" : saving ? "Saving…" : "Watchlist"}
-          </button>
-          {item.externalUrl && (
-            <a
-              href={item.externalUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="ml-0 inline-flex items-center gap-2 px-2 py-3 text-xs font-bold uppercase tracking-[0.12em] text-black/55 transition hover:text-black sm:ml-auto"
-            >
-              Details
-              <ArrowIcon />
-            </a>
+          {facts.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold uppercase tracking-[0.13em] text-white/50">
+              {facts.map((fact) => (
+                <span key={String(fact)} className="pf-fact">
+                  {fact}
+                </span>
+              ))}
+            </div>
           )}
-        </div>
-        {saveMessage && (
-          <p
-            className={`mt-3 text-xs ${saved ? "text-[#2d7443]" : "text-[#a02e29]"}`}
-            role="status"
-          >
-            {saveMessage}
+
+          <div className="mt-6">
+            <RatingBadges item={item} />
+          </div>
+
+          <p className="mt-8 max-w-3xl text-[15px] leading-7 text-white/68 sm:text-base sm:leading-8">
+            {item.synopsis}
           </p>
-        )}
+
+          {(item.creators?.length ||
+            item.cast?.length ||
+            item.language ||
+            release) && (
+            <dl className="mt-8 grid gap-x-7 gap-y-5 border-y border-white/10 py-6 sm:grid-cols-2">
+              <Detail label={creatorsLabel} value={item.creators?.join(", ")} />
+              <Detail label="Starring" value={item.cast?.join(", ")} />
+              <Detail label="Original language" value={item.language} />
+              <Detail label="Released" value={release} />
+            </dl>
+          )}
+
+          <div className="mt-auto pt-8">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={onRoll}
+                disabled={loading}
+                className="pf-button pf-button-primary"
+              >
+                <span aria-hidden="true">↻</span>
+                {loading ? "Finding another…" : "Roll something else"}
+              </button>
+              <button
+                type="button"
+                onClick={saveToWatchlist}
+                disabled={saving || saved}
+                className="pf-button pf-button-secondary"
+              >
+                <span aria-hidden="true">{saved ? "◆" : "◇"}</span>
+                {saved ? "Saved" : saving ? "Saving…" : "Save pick"}
+              </button>
+              {item.trailerUrl && (
+                <a
+                  href={item.trailerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pf-text-link"
+                >
+                  Watch trailer ↗
+                </a>
+              )}
+              {item.externalUrl && (
+                <a
+                  href={item.externalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pf-text-link"
+                >
+                  Full details ↗
+                </a>
+              )}
+            </div>
+            {saveMessage && (
+              <p
+                className={`mt-4 text-xs ${
+                  saved ? "text-[var(--lime)]" : "text-[var(--danger)]"
+                }`}
+                role="status"
+              >
+                {saveMessage}
+              </p>
+            )}
+            <p className="mt-6 max-w-3xl border-l border-[var(--lime)]/60 pl-3 text-[10px] leading-5 text-white/35">
+              {item.sourceNote}
+            </p>
+          </div>
+        </div>
       </div>
     </article>
   );
@@ -328,10 +357,7 @@ export function MediaRandomizer() {
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
 
-  const sources = useMemo(
-    () => getSourcesForCategory(category),
-    [category],
-  );
+  const sources = useMemo(() => getSourcesForCategory(category), [category]);
   const selectedSource =
     sources.find((candidate) => candidate.id === source) ?? sources[0]!;
 
@@ -386,99 +412,59 @@ export function MediaRandomizer() {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="pf-page min-h-screen">
       <div className="grain" />
-      <header className="border-b border-black/15">
-        <div className="mx-auto flex max-w-[86rem] items-center justify-between px-4 py-4 sm:px-7">
-          <a href="/" className="flex items-center gap-3" aria-label="Pickfilm home">
-            <span className="grid size-8 place-items-center bg-[var(--ink)] text-[var(--acid)]">
-              <DiceIcon />
-            </span>
-            <span className="text-sm font-black uppercase tracking-[0.22em]">
-              Pickfilm
-            </span>
-          </a>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <nav
-              aria-label="Primary navigation"
-              className="flex items-center gap-1 rounded-full border border-black/10 p-1 text-[10px] font-black uppercase tracking-[0.13em]"
-            >
-              <a
-                href="/"
-                aria-current="page"
-                className="rounded-full bg-[var(--ink)] px-3 py-1.5 text-white"
-              >
-                Watch
-              </a>
-              <a
-                href="/music"
-                className="rounded-full px-3 py-1.5 text-black/45 hover:text-black"
-              >
-                Music
-              </a>
-            </nav>
-            <AuthControl />
-          </div>
-        </div>
-      </header>
+      <SiteHeader current="watch" />
 
-      <section className="mx-auto max-w-[86rem] px-4 pb-12 pt-8 sm:px-7 sm:pt-12">
-        <div className="mb-8 grid gap-6 border-b border-black/15 pb-8 lg:grid-cols-[1fr_auto] lg:items-end">
+      <section className="pf-container pb-12 pt-10 sm:pt-14">
+        <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_minmax(24rem,36rem)] lg:items-end">
           <div>
-            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-black/45">
-              Spin the world’s best charts
+            <p className="pf-kicker text-[var(--lime)]">
+              Global film and television charts
             </p>
-            <h2 className="display-serif max-w-3xl text-[clamp(2.2rem,6vw,5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
-              Stop browsing.
+            <h1 className="display-serif mt-4 max-w-4xl text-[clamp(3.3rem,8vw,7rem)] font-bold leading-[0.82] tracking-[-0.06em] text-white">
+              Let the charts
               <br />
-              <em className="font-normal">Start watching.</em>
-            </h2>
+              <em className="font-normal text-white/45">make the call.</em>
+            </h1>
+            <p className="mt-6 max-w-xl text-sm leading-7 text-white/48 sm:text-base">
+              One strong recommendation drawn from popular, acclaimed, and
+              specialist lists. No endless grid. No decision fatigue.
+            </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:w-[34rem]">
-            <div>
-              <label
-                htmlFor="category"
-                className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-black/45"
-              >
-                I want
+          <div className="pf-picker">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="pf-field">
+                <span>I want to watch</span>
+                <select
+                  value={category}
+                  onChange={(event) =>
+                    chooseCategory(event.target.value as MediaCategory)
+                  }
+                >
+                  {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <select
-                id="category"
-                value={category}
-                onChange={(event) =>
-                  chooseCategory(event.target.value as MediaCategory)
-                }
-                className="w-full appearance-none border border-black/20 bg-transparent px-4 py-3 text-sm font-bold"
-              >
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="source"
-                className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-black/45"
-              >
-                From
+              <label className="pf-field">
+                <span>Choose a chart</span>
+                <select
+                  value={source}
+                  onChange={(event) => setSource(event.target.value as SourceId)}
+                >
+                  {sources.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.label}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <select
-                id="source"
-                value={source}
-                onChange={(event) => setSource(event.target.value as SourceId)}
-                className="w-full appearance-none border border-black/20 bg-transparent px-4 py-3 text-sm font-bold"
-              >
-                {sources.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.label}
-                  </option>
-                ))}
-              </select>
             </div>
-            <p className="text-xs leading-5 text-black/48 sm:col-span-2">
+            <p className="mt-4 text-xs leading-5 text-white/38">
               {selectedSource.description}
             </p>
           </div>
@@ -500,19 +486,14 @@ export function MediaRandomizer() {
         </div>
 
         {error && item && (
-          <div
-            className="mt-4 border border-[#a02e29]/20 bg-[#a02e29]/5 px-4 py-3 text-sm text-[#81231f]"
-            role="alert"
-          >
+          <p className="pf-inline-error" role="alert">
             {error}
-          </div>
+          </p>
         )}
 
-        <footer className="mt-8 grid gap-3 border-t border-black/15 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-black/35 sm:grid-cols-2 sm:items-center">
-          <p>Charts refresh upstream · Every roll is server-randomized</p>
-          <p className="sm:text-right">
-            Uses the TMDB API but is not endorsed or certified by TMDB
-          </p>
+        <footer className="pf-footer">
+          <p>Live upstream charts · Uniform server-side randomization</p>
+          <p>TMDb data used under API attribution requirements</p>
         </footer>
       </section>
     </main>

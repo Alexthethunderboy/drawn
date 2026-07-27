@@ -4,12 +4,14 @@ import type { TrackItem } from "@/lib/music/types";
 
 interface ItunesTrack {
   trackId?: number;
+  collectionId?: number;
   trackName?: string;
   artistName?: string;
   collectionName?: string;
   artworkUrl100?: string;
   previewUrl?: string;
   trackViewUrl?: string;
+  collectionViewUrl?: string;
   trackTimeMillis?: number;
   primaryGenreName?: string;
 }
@@ -53,41 +55,80 @@ function bestMatch(
   );
 }
 
+function bestAlbumMatch(
+  albums: ItunesTrack[],
+  item: TrackItem,
+): ItunesTrack | undefined {
+  const targetTitle = normalize(item.title);
+  const targetArtist = normalize(item.artist);
+
+  return (
+    albums.find(
+      (album) =>
+        normalize(album.collectionName) === targetTitle &&
+        normalize(album.artistName) === targetArtist,
+    ) ??
+    albums.find(
+      (album) =>
+        normalize(album.collectionName).includes(targetTitle) &&
+        normalize(album.artistName).includes(targetArtist),
+    ) ??
+    albums[0]
+  );
+}
+
 /**
  * The iTunes Search API is metadata enrichment only, never a chart source.
  * Enriching just the selected song keeps requests beneath Apple's documented
  * rate guidance and gives no-key charts artwork and legal preview links.
  */
 async function enrichTrackWithItunes(item: TrackItem): Promise<TrackItem> {
-  if (item.artworkUrl && item.previewUrl && item.appleMusicUrl) return item;
+  const isAlbum = item.mediaType === "album";
+  if (
+    item.artworkUrl &&
+    item.appleMusicUrl &&
+    (isAlbum || item.previewUrl)
+  ) {
+    return item;
+  }
 
   try {
     const country = (process.env.ITUNES_STOREFRONT || "US").toUpperCase();
     const url = new URL("https://itunes.apple.com/search");
     url.searchParams.set("term", `${item.artist} ${item.title}`);
     url.searchParams.set("media", "music");
-    url.searchParams.set("entity", "song");
+    url.searchParams.set("entity", isAlbum ? "album" : "song");
     url.searchParams.set("country", country);
     url.searchParams.set("limit", "5");
 
     const payload = await fetchJson<ItunesSearchResponse>(url, {
       next: { revalidate: 86_400 },
     });
-    const match = bestMatch(payload.results ?? [], item);
+    const match = isAlbum
+      ? bestAlbumMatch(payload.results ?? [], item)
+      : bestMatch(payload.results ?? [], item);
     if (!match) return item;
 
-    const appleMusicId = finiteNumber(match.trackId);
+    const appleMusicId = finiteNumber(
+      isAlbum ? match.collectionId : match.trackId,
+    );
     const album = nonEmptyString(match.collectionName) ?? item.album;
-    const appleMusicUrl = nonEmptyString(match.trackViewUrl);
+    const appleMusicUrl = nonEmptyString(
+      isAlbum ? match.collectionViewUrl : match.trackViewUrl,
+    );
     const genre = nonEmptyString(match.primaryGenreName);
 
     return {
       ...item,
       album,
       artworkUrl: artworkUrl(match.artworkUrl100) ?? item.artworkUrl,
-      previewUrl: nonEmptyString(match.previewUrl) ?? item.previewUrl,
+      previewUrl: isAlbum
+        ? item.previewUrl
+        : nonEmptyString(match.previewUrl) ?? item.previewUrl,
       appleMusicUrl: appleMusicUrl ?? item.appleMusicUrl,
-      durationMs: finiteNumber(match.trackTimeMillis) ?? item.durationMs,
+      durationMs: isAlbum
+        ? item.durationMs
+        : finiteNumber(match.trackTimeMillis) ?? item.durationMs,
       genres: item.genres.length ? item.genres : genre ? [genre] : [],
       externalIds: {
         ...item.externalIds,

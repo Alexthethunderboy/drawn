@@ -11,16 +11,22 @@ interface JikanAnime {
   title?: string;
   title_english?: string | null;
   synopsis?: string | null;
+  rating?: string | null;
   score?: number | null;
   rank?: number | null;
+  episodes?: number | null;
   year?: number | null;
-  aired?: { prop?: { from?: { year?: number | null } } };
+  aired?: {
+    from?: string | null;
+    prop?: { from?: { year?: number | null } };
+  };
   images?: {
     webp?: { large_image_url?: string | null; image_url?: string | null };
     jpg?: { large_image_url?: string | null; image_url?: string | null };
   };
   trailer?: { url?: string | null };
   genres?: { name?: string }[];
+  studios?: { name?: string }[];
   duration?: string | null;
 }
 
@@ -73,6 +79,7 @@ export async function fetchJikanCandidates(
         year:
           finiteNumber(anime.year) ??
           finiteNumber(anime.aired?.prop?.from?.year),
+        releaseDate: nonEmptyString(anime.aired?.from),
         mediaType: "anime",
         category: "anime",
         synopsis:
@@ -85,8 +92,13 @@ export async function fetchJikanCandidates(
         externalUrl: nonEmptyString(anime.url),
         trailerUrl: nonEmptyString(anime.trailer?.url),
         runtimeMinutes: parseAnimeRuntime(anime.duration),
+        episodeCount: finiteNumber(anime.episodes),
+        contentRating: nonEmptyString(anime.rating),
         genres: (anime.genres ?? []).flatMap((genre) =>
           genre.name ? [genre.name] : [],
+        ),
+        creators: (anime.studios ?? []).flatMap((studio) =>
+          studio.name ? [studio.name] : [],
         ),
         ratings: malRating === undefined ? {} : { mal: malRating },
         externalIds: { mal: malId },

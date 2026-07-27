@@ -25,6 +25,9 @@ interface ListenBrainzResponse {
   };
 }
 
+const PAGE_SIZE = 100;
+const TOP_CHART_LIMIT = 1_000;
+
 function chartRange(source: ListenBrainzSource): string {
   if (source === "listenbrainz-week") return "week";
   if (source === "listenbrainz-month") return "month";
@@ -39,13 +42,14 @@ export async function fetchListenBrainzTracks(
   source: ListenBrainzSource,
 ): Promise<TrackItem[]> {
   const definition = getMusicSource(source);
-  const page = randomPage(3) - 1;
+  // Sample the full top 1,000 instead of repeatedly hovering near chart #1.
+  const page = randomPage(TOP_CHART_LIMIT / PAGE_SIZE) - 1;
   const url = new URL(
     "https://api.listenbrainz.org/1/stats/sitewide/recordings",
   );
   url.searchParams.set("range", chartRange(source));
-  url.searchParams.set("count", "50");
-  url.searchParams.set("offset", String(page * 50));
+  url.searchParams.set("count", String(PAGE_SIZE));
+  url.searchParams.set("offset", String(page * PAGE_SIZE));
 
   const payload = await fetchJson<ListenBrainzResponse>(url, {
     headers: { "User-Agent": "Pickfilm/0.1 (music discovery)" },
@@ -90,8 +94,8 @@ export async function fetchListenBrainzTracks(
         externalIds: { recordingMbid, releaseMbid },
         source,
         sourceLabel: definition.shortLabel,
-        sourceNote: `${definition.description} Chart range: ${chartRange(source).replace("_", " ")}.`,
-        rank: page * 50 + index + 1,
+        sourceNote: `${definition.description} Sampled from its global top ${TOP_CHART_LIMIT}; artists are balanced before selection.`,
+        rank: page * PAGE_SIZE + index + 1,
         mediaType: "track",
         category: "music",
         synopsis: album

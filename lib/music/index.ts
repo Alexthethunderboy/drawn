@@ -1,10 +1,13 @@
 import { MediaSourceError } from "@/lib/media/errors";
-import { pickRandom } from "@/lib/media/random";
 import { getMusicBlendSources } from "@/lib/music/config";
 import { enrichTrack } from "@/lib/music/enrich";
-import { fetchAppleTopSongs } from "@/lib/music/providers/apple";
-import { fetchLastFmTracks } from "@/lib/music/providers/lastfm";
 import { fetchListenBrainzTracks } from "@/lib/music/providers/listenbrainz";
+import { fetchRollingStoneAlbums } from "@/lib/music/providers/rolling-stone";
+import {
+  applyMusicExclusions,
+  pickArtistBalancedTrack,
+  type MusicRollExclusions,
+} from "@/lib/music/selection";
 import type {
   MusicRollResponse,
   MusicSourceId,
@@ -17,15 +20,30 @@ async function fetchConcreteMusicSource(
   source: ConcreteMusicSource,
 ): Promise<TrackItem[]> {
   switch (source) {
+    case "rolling-stone-500":
+      return fetchRollingStoneAlbums();
     case "listenbrainz-week":
     case "listenbrainz-month":
     case "listenbrainz-all-time":
       return fetchListenBrainzTracks(source);
-    case "lastfm-global":
-      return fetchLastFmTracks();
-    case "apple-top-songs":
-      return fetchAppleTopSongs();
   }
+}
+
+async function fetchMusicSourceWithFallback(
+  source: ConcreteMusicSource,
+): Promise<TrackItem[]> {
+  try {
+    const candidates = await fetchConcreteMusicSource(source);
+    if (candidates.length > 0) return candidates;
+  } catch {
+    // The locally stored album chart below keeps every roll usable.
+  }
+
+  if (source === "rolling-stone-500") return [];
+  return fetchRollingStoneAlbums().map((item) => ({
+    ...item,
+    sourceNote: `The requested live chart was unavailable, so this roll used the local ${item.sourceLabel} fallback. ${item.sourceNote}`,
+  }));
 }
 
 function trackIdentity(item: TrackItem): string {
@@ -50,7 +68,7 @@ async function fetchBlendedTracks(): Promise<TrackItem[]> {
     getMusicBlendSources().map(fetchConcreteMusicSource),
   );
   const candidates = results.flatMap((result) =>
-    result.status === "fulfilled" ? result.value.slice(0, 30) : [],
+    result.status === "fulfilled" ? result.value : [],
   );
 
   if (candidates.length === 0) {
@@ -72,11 +90,12 @@ async function fetchBlendedTracks(): Promise<TrackItem[]> {
 
 export async function rollMusic(
   source: MusicSourceId,
+  exclusions: MusicRollExclusions = {},
 ): Promise<MusicRollResponse> {
   const candidates =
     source === "all"
       ? await fetchBlendedTracks()
-      : await fetchConcreteMusicSource(source);
+      : await fetchMusicSourceWithFallback(source);
 
   if (candidates.length === 0) {
     throw new MediaSourceError(
@@ -86,12 +105,14 @@ export async function rollMusic(
     );
   }
 
-  const selected = pickRandom(candidates);
-  const item = await enrichTrack(selected);
+  const eligibleCandidates = applyMusicExclusions(candidates, exclusions);
+  const selection = pickArtistBalancedTrack(eligibleCandidates);
+  const item = await enrichTrack(selection.item);
 
   return {
     item,
     poolSize: candidates.length,
+    artistPoolSize: selection.artistPoolSize,
     generatedAt: new Date().toISOString(),
   };
 }

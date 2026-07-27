@@ -6,8 +6,9 @@ import {
 import { MediaSourceError } from "@/lib/media/errors";
 import { enrichMedia } from "@/lib/media/enrich";
 import { pickRandom } from "@/lib/media/random";
+import { fetchCuratedMediaCandidates } from "@/lib/media/providers/curated";
 import { fetchJikanCandidates } from "@/lib/media/providers/jikan";
-import { fetchImdbTop250Candidates } from "@/lib/media/providers/rapidapi";
+import { fetchImdbTop1000Candidates } from "@/lib/media/providers/rapidapi";
 import { fetchTmdbCandidates } from "@/lib/media/providers/tmdb";
 import { fetchTraktCandidates } from "@/lib/media/providers/trakt";
 import type {
@@ -18,6 +19,14 @@ import type {
 } from "@/lib/media/types";
 
 type ConcreteSource = Exclude<SourceId, "all">;
+
+const LOCAL_FALLBACKS: Partial<
+  Record<MediaCategory, ConcreteSource>
+> = {
+  movies: "letterboxd-most-fans",
+  anime: "rt-anime-movies",
+  docs: "rt-documentaries",
+};
 
 async function fetchConcreteSource(
   category: MediaCategory,
@@ -33,12 +42,38 @@ async function fetchConcreteSource(
     case "tmdb-popular":
     case "tmdb-top-rated":
       return fetchTmdbCandidates(category, source);
-    case "imdb-top-250":
-      return fetchImdbTop250Candidates();
+    case "imdb-top-1000":
+      return fetchImdbTop1000Candidates();
     case "mal-top":
     case "mal-popular":
       return fetchJikanCandidates(source);
+    case "letterboxd-most-fans":
+    case "rt-anime-movies":
+    case "imdb-animated-movies":
+    case "rt-documentaries":
+    case "letterboxd-documentaries":
+      return fetchCuratedMediaCandidates(source);
   }
+}
+
+async function fetchConcreteSourceWithFallback(
+  category: MediaCategory,
+  source: ConcreteSource,
+): Promise<MediaItem[]> {
+  try {
+    const candidates = await fetchConcreteSource(category, source);
+    if (candidates.length > 0) return candidates;
+  } catch {
+    // Exact local lists below keep supported categories usable during outages.
+  }
+
+  const fallbackSource = LOCAL_FALLBACKS[category];
+  if (!fallbackSource || fallbackSource === source) return [];
+  const fallbackItems = await fetchConcreteSource(category, fallbackSource);
+  return fallbackItems.map((item) => ({
+    ...item,
+    sourceNote: `The requested live chart was unavailable, so this roll used ${item.sourceLabel}. ${item.sourceNote}`,
+  }));
 }
 
 function dedupeCandidates(items: MediaItem[]): MediaItem[] {
@@ -104,7 +139,7 @@ export async function rollMedia(
   const candidates =
     source === "all"
       ? await fetchBlendedCandidates(category)
-      : await fetchConcreteSource(category, source);
+      : await fetchConcreteSourceWithFallback(category, source);
 
   if (candidates.length === 0) {
     throw new MediaSourceError(

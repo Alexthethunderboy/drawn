@@ -26,10 +26,52 @@ interface SpotifyTrack {
   };
 }
 
+interface SpotifyAlbum {
+  id?: string;
+  name?: string;
+  release_date?: string;
+  external_urls?: { spotify?: string };
+  artists?: { name?: string }[];
+  images?: SpotifyImage[];
+}
+
 interface SpotifySearchResponse {
   tracks?: {
     items?: SpotifyTrack[];
   };
+  albums?: {
+    items?: SpotifyAlbum[];
+  };
+}
+
+function albumBestMatch(
+  albums: SpotifyAlbum[],
+  item: TrackItem,
+): SpotifyAlbum | undefined {
+  const targetTitle = normalize(item.title);
+  const targetArtist = normalize(item.artist);
+  const artistMatches = (album: SpotifyAlbum) =>
+    (album.artists ?? []).some((artist) => {
+      const candidate = normalize(artist.name);
+      return (
+        candidate === targetArtist ||
+        candidate.includes(targetArtist) ||
+        targetArtist.includes(candidate)
+      );
+    });
+
+  return (
+    albums.find(
+      (album) =>
+        normalize(album.name) === targetTitle && artistMatches(album),
+    ) ??
+    albums.find(
+      (album) =>
+        (normalize(album.name).includes(targetTitle) ||
+          targetTitle.includes(normalize(album.name))) &&
+        artistMatches(album),
+    )
+  );
 }
 
 interface CachedToken {
@@ -160,8 +202,12 @@ export async function enrichTrackWithSpotify(
 
     const market = (process.env.SPOTIFY_MARKET || "US").toUpperCase();
     const url = new URL("https://api.spotify.com/v1/search");
-    url.searchParams.set("q", `track:${item.title} artist:${item.artist}`);
-    url.searchParams.set("type", "track");
+    const isAlbum = item.mediaType === "album";
+    url.searchParams.set(
+      "q",
+      `${isAlbum ? "album" : "track"}:${item.title} artist:${item.artist}`,
+    );
+    url.searchParams.set("type", isAlbum ? "album" : "track");
     url.searchParams.set("market", market);
     url.searchParams.set("limit", "10");
 
@@ -176,6 +222,25 @@ export async function enrichTrackWithSpotify(
     if (!response.ok) return item;
 
     const payload = (await response.json()) as SpotifySearchResponse;
+    if (isAlbum) {
+      const album = albumBestMatch(payload.albums?.items ?? [], item);
+      const spotifyAlbumId = nonEmptyString(album?.id);
+      const spotifyUrl = nonEmptyString(album?.external_urls?.spotify);
+      if (!album || !spotifyAlbumId || !spotifyUrl) return item;
+
+      return {
+        ...item,
+        artworkUrl: item.artworkUrl ?? largestImage(album.images),
+        spotifyUrl,
+        year:
+          finiteNumber(album.release_date?.match(/^\d{4}/)?.[0]) ?? item.year,
+        externalIds: {
+          ...item.externalIds,
+          spotifyAlbumId,
+        },
+      };
+    }
+
     const match = bestMatch(payload.tracks?.items ?? [], item);
     if (!match) return item;
 

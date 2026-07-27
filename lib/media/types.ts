@@ -7,13 +7,18 @@ export const SOURCE_IDS = [
   "trakt-popular",
   "trakt-trending",
   "rt-fresh",
-  "imdb-top-250",
+  "imdb-top-1000",
   "imdb-high-rated",
   "metacritic",
   "tmdb-popular",
   "tmdb-top-rated",
   "mal-top",
   "mal-popular",
+  "letterboxd-most-fans",
+  "rt-anime-movies",
+  "imdb-animated-movies",
+  "rt-documentaries",
+  "letterboxd-documentaries",
 ] as const;
 
 export type SourceId = (typeof SOURCE_IDS)[number];
@@ -51,7 +56,9 @@ export interface MediaItem {
   mediaKey: string;
   title: string;
   originalTitle?: string;
+  tagline?: string;
   year?: number;
+  releaseDate?: string;
   mediaType: MediaType;
   category: MediaCategory;
   synopsis: string;
@@ -60,7 +67,13 @@ export interface MediaItem {
   externalUrl?: string;
   trailerUrl?: string;
   runtimeMinutes?: number;
+  seasonCount?: number;
+  episodeCount?: number;
+  contentRating?: string;
+  language?: string;
   genres: string[];
+  creators?: string[];
+  cast?: string[];
   ratings: MediaRatings;
   externalIds: MediaExternalIds;
   source: Exclude<SourceId, "all">;

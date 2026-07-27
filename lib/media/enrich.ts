@@ -8,12 +8,41 @@ interface TmdbDetails {
   title?: string;
   name?: string;
   overview?: string;
+  tagline?: string;
+  release_date?: string;
+  first_air_date?: string;
   poster_path?: string | null;
   backdrop_path?: string | null;
   vote_average?: number;
   runtime?: number | null;
   episode_run_time?: number[];
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  last_episode_to_air?: { runtime?: number | null };
   genres?: { name?: string }[];
+  created_by?: { name?: string }[];
+  spoken_languages?: { english_name?: string; name?: string }[];
+  credits?: {
+    cast?: { name?: string; order?: number }[];
+    crew?: { name?: string; job?: string; department?: string }[];
+  };
+  videos?: {
+    results?: {
+      key?: string;
+      site?: string;
+      type?: string;
+      official?: boolean;
+    }[];
+  };
+  release_dates?: {
+    results?: {
+      iso_3166_1?: string;
+      release_dates?: { certification?: string; type?: number }[];
+    }[];
+  };
+  content_ratings?: {
+    results?: { iso_3166_1?: string; rating?: string }[];
+  };
   external_ids?: { imdb_id?: string | null };
 }
 
@@ -35,8 +64,15 @@ interface OmdbResponse {
   Response?: string;
   Error?: string;
   Plot?: string;
+  Title?: string;
+  Poster?: string;
+  Rated?: string;
+  Released?: string;
   Runtime?: string;
   Genre?: string;
+  Director?: string;
+  Actors?: string;
+  Language?: string;
   imdbRating?: string;
   Ratings?: OmdbRating[];
 }
@@ -50,6 +86,55 @@ function parseRatedValue(value: unknown): number | undefined {
   return finiteNumber(value);
 }
 
+function splitList(value: string | undefined): string[] | undefined {
+  const items = value
+    ?.split(",")
+    .map((item) => item.trim())
+    .filter((item) => item && item !== "N/A");
+  return items?.length ? items : undefined;
+}
+
+function isPlaceholderSynopsis(value: string): boolean {
+  return /^synopsis\b/i.test(value.trim());
+}
+
+function tmdbCertification(details: TmdbDetails): string | undefined {
+  const movieRelease =
+    details.release_dates?.results
+      ?.find((result) => result.iso_3166_1 === "US")
+      ?.release_dates?.find(
+        (release) => release.certification && release.type === 3,
+      ) ??
+    details.release_dates?.results
+      ?.find((result) => result.iso_3166_1 === "US")
+      ?.release_dates?.find((release) => release.certification);
+  if (movieRelease?.certification) return movieRelease.certification;
+
+  return nonEmptyString(
+    details.content_ratings?.results?.find(
+      (result) => result.iso_3166_1 === "US",
+    )?.rating,
+  );
+}
+
+function tmdbTrailer(details: TmdbDetails): string | undefined {
+  const videos = details.videos?.results ?? [];
+  const trailer =
+    videos.find(
+      (video) =>
+        video.site === "YouTube" &&
+        video.type === "Trailer" &&
+        video.official,
+    ) ??
+    videos.find(
+      (video) => video.site === "YouTube" && video.type === "Trailer",
+    ) ??
+    videos.find((video) => video.site === "YouTube");
+  return trailer?.key
+    ? `https://www.youtube.com/watch?v=${trailer.key}`
+    : undefined;
+}
+
 function applyTmdbDetails(item: MediaItem, details: TmdbDetails): MediaItem {
   const tmdbId = finiteNumber(details.id);
   const imdb =
@@ -60,24 +145,55 @@ function applyTmdbDetails(item: MediaItem, details: TmdbDetails): MediaItem {
   const runtime =
     finiteNumber(details.runtime) ??
     finiteNumber(details.episode_run_time?.[0]) ??
+    finiteNumber(details.last_episode_to_air?.runtime) ??
     item.runtimeMinutes;
+  const creators =
+    details.created_by
+      ?.flatMap((person) => (person.name ? [person.name] : []))
+      .slice(0, 3) ??
+    details.credits?.crew
+      ?.filter((person) => person.job === "Director")
+      .flatMap((person) => (person.name ? [person.name] : []))
+      .slice(0, 3);
+  const cast = details.credits?.cast
+    ?.slice()
+    .sort((left, right) => (left.order ?? 999) - (right.order ?? 999))
+    .flatMap((person) => (person.name ? [person.name] : []))
+    .slice(0, 4);
+  const language = nonEmptyString(
+    details.spoken_languages?.[0]?.english_name ??
+      details.spoken_languages?.[0]?.name,
+  );
 
   return {
     ...item,
     title: nonEmptyString(details.title ?? details.name) ?? item.title,
     synopsis:
       nonEmptyString(details.overview) &&
-      item.synopsis.startsWith("Synopsis")
+      isPlaceholderSynopsis(item.synopsis)
         ? details.overview!.trim()
         : item.synopsis,
+    tagline: nonEmptyString(details.tagline) ?? item.tagline,
+    releaseDate:
+      nonEmptyString(details.release_date ?? details.first_air_date) ??
+      item.releaseDate,
     posterUrl:
       tmdbImageUrl(details.poster_path, "w500") ?? item.posterUrl,
     backdropUrl:
       tmdbImageUrl(details.backdrop_path, "w1280") ?? item.backdropUrl,
     runtimeMinutes: runtime,
+    seasonCount:
+      finiteNumber(details.number_of_seasons) ?? item.seasonCount,
+    episodeCount:
+      finiteNumber(details.number_of_episodes) ?? item.episodeCount,
+    contentRating: tmdbCertification(details) ?? item.contentRating,
+    language: language ?? item.language,
     genres:
       details.genres?.flatMap((genre) => (genre.name ? [genre.name] : [])) ??
       item.genres,
+    creators: creators?.length ? creators : item.creators,
+    cast: cast?.length ? cast : item.cast,
+    trailerUrl: item.trailerUrl ?? tmdbTrailer(details),
     ratings:
       rating === undefined
         ? item.ratings
@@ -137,7 +253,10 @@ async function enrichFromTmdb(item: MediaItem): Promise<MediaItem> {
 
   const type = item.mediaType === "show" ? "tv" : "movie";
   const url = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}`);
-  url.searchParams.set("append_to_response", "external_ids");
+  url.searchParams.set(
+    "append_to_response",
+    "external_ids,credits,videos,release_dates,content_ratings",
+  );
   url.searchParams.set("language", "en-US");
 
   const details = await fetchJson<TmdbDetails>(url, {
@@ -181,13 +300,31 @@ async function enrichFromOmdb(item: MediaItem): Promise<MediaItem> {
     ?.split(",")
     .map((genre) => genre.trim())
     .filter(Boolean);
+  const poster =
+    nonEmptyString(payload.Poster) && payload.Poster !== "N/A"
+      ? payload.Poster
+      : undefined;
 
   return {
     ...item,
+    title: nonEmptyString(payload.Title) ?? item.title,
     synopsis:
-      plot && item.synopsis.startsWith("Synopsis") ? plot : item.synopsis,
+      plot && isPlaceholderSynopsis(item.synopsis) ? plot : item.synopsis,
+    posterUrl: item.posterUrl ?? poster,
+    releaseDate:
+      nonEmptyString(payload.Released) && payload.Released !== "N/A"
+        ? payload.Released
+        : item.releaseDate,
     runtimeMinutes: parseRuntime(payload.Runtime) ?? item.runtimeMinutes,
+    contentRating:
+      nonEmptyString(payload.Rated) && payload.Rated !== "N/A"
+        ? payload.Rated
+        : item.contentRating,
+    language:
+      splitList(payload.Language)?.[0] ?? item.language,
     genres: genres?.length ? genres : item.genres,
+    creators: splitList(payload.Director) ?? item.creators,
+    cast: splitList(payload.Actors)?.slice(0, 4) ?? item.cast,
     ratings: { ...item.ratings, ...omdbRatings(payload) },
   };
 }

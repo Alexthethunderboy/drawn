@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AuthControl } from "@/components/auth-control";
+import { useWatchlist } from "@/components/app-providers";
+import { SiteHeader } from "@/components/site-header";
 import { MUSIC_SOURCES, getMusicSource } from "@/lib/music/config";
 import type {
   MusicRollResponse,
@@ -38,7 +39,9 @@ function TrackArtwork({ item }: { item: TrackItem }) {
     return (
       <img
         src={item.artworkUrl}
-        alt={`${item.title} artwork`}
+        alt={`${item.title} ${item.mediaType === "album" ? "album" : "track"} cover`}
+        width={640}
+        height={640}
         className="absolute inset-0 size-full object-cover"
         onError={() => setBroken(true)}
       />
@@ -46,11 +49,8 @@ function TrackArtwork({ item }: { item: TrackItem }) {
   }
 
   return (
-    <div
-      className="music-art-fallback absolute inset-0 grid place-items-center"
-      aria-label="Artwork unavailable"
-    >
-      <div className="music-record">
+    <div className="music-art-fallback absolute inset-0 grid place-items-center">
+      <div className="music-record" aria-label="Cover art unavailable">
         <span />
       </div>
     </div>
@@ -59,15 +59,17 @@ function TrackArtwork({ item }: { item: TrackItem }) {
 
 function MusicLoadingCard() {
   return (
-    <div className="music-card grid overflow-hidden border border-white/12 bg-[#181817] lg:grid-cols-[minmax(19rem,0.86fr)_1.14fr]">
-      <div className="poster-skeleton aspect-square min-h-80 lg:min-h-[38rem]" />
-      <div className="flex min-h-[32rem] flex-col p-7 sm:p-10">
-        <div className="loading-line mb-10 h-5 w-28 opacity-30" />
-        <div className="loading-line mb-3 h-14 w-5/6 opacity-30" />
-        <div className="loading-line mb-10 h-8 w-1/2 opacity-30" />
-        <div className="loading-line mb-3 h-3 w-11/12 opacity-30" />
-        <div className="loading-line h-3 w-3/5 opacity-30" />
-        <div className="loading-line mt-auto h-14 w-44 opacity-30" />
+    <div className="pf-feature-card grid overflow-hidden lg:grid-cols-[minmax(20rem,0.9fr)_1.1fr]">
+      <div className="poster-skeleton aspect-square min-h-80 lg:min-h-[42rem]" />
+      <div className="flex min-h-[34rem] flex-col p-7 sm:p-10 lg:p-12">
+        <div className="loading-line mb-10 h-4 w-32" />
+        <div className="loading-line mb-3 h-14 w-5/6" />
+        <div className="loading-line mb-10 h-8 w-1/2" />
+        <div className="flex gap-2">
+          <div className="loading-line h-8 w-28" />
+          <div className="loading-line h-8 w-24" />
+        </div>
+        <div className="loading-line mt-auto h-12 w-44" />
       </div>
     </div>
   );
@@ -81,19 +83,19 @@ function MusicError({
   retry: () => void;
 }) {
   return (
-    <div className="music-card grid min-h-[32rem] place-items-center border border-white/12 bg-[#181817] p-8 text-center text-white">
-      <div className="max-w-lg">
-        <span className="mb-6 inline-grid size-14 place-items-center rounded-full bg-[var(--music-accent)] text-2xl text-black">
+    <div className="pf-feature-card grid min-h-[34rem] place-items-center p-8 text-center">
+      <div className="max-w-md">
+        <span className="mx-auto grid size-14 place-items-center rounded-full border border-white/15 bg-white/5 text-2xl text-[var(--coral)]">
           ♪
         </span>
-        <h2 className="display-serif mb-3 text-3xl font-bold">
+        <h2 className="display-serif mt-6 text-4xl font-bold text-white">
           The chart went quiet.
         </h2>
-        <p className="mb-7 text-sm leading-7 text-white/55">{message}</p>
+        <p className="mt-3 text-sm leading-7 text-white/50">{message}</p>
         <button
           type="button"
           onClick={retry}
-          className="bg-[var(--music-accent)] px-6 py-3 text-xs font-black uppercase tracking-[0.16em] text-black"
+          className="pf-button pf-button-music mt-7"
         >
           Try another spin
         </button>
@@ -105,36 +107,29 @@ function MusicError({
 function MusicResult({
   item,
   poolSize,
+  artistPoolSize,
   loading,
   roll,
 }: {
   item: TrackItem;
   poolSize: number;
+  artistPoolSize: number;
   loading: boolean;
   roll: () => void;
 }) {
+  const { isSaved, save } = useWatchlist();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const saved = isSaved(item.mediaKey);
 
-  useEffect(() => {
-    setSaved(false);
-    setSaveMessage("");
-  }, [item.mediaKey]);
+  useEffect(() => setSaveMessage(""), [item.mediaKey]);
 
   async function saveTrack() {
     setSaving(true);
     setSaveMessage("");
     try {
-      const response = await fetch("/api/watchlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item }),
-      });
-      const payload = (await response.json()) as ApiError;
-      if (!response.ok) throw new Error(payload.error ?? "Could not save.");
-      setSaved(true);
-      setSaveMessage("Saved to your watchlist.");
+      await save(item);
+      setSaveMessage("Saved to your profile.");
     } catch (error) {
       setSaveMessage(
         error instanceof Error ? error.message : "Could not save this track.",
@@ -145,7 +140,8 @@ function MusicResult({
   }
 
   const trackFacts = [
-    item.album,
+    item.mediaType === "track" ? item.album : item.year,
+    item.recordLabel,
     item.genres[0],
     duration(item.durationMs),
   ].filter(Boolean);
@@ -159,159 +155,184 @@ function MusicResult({
   ].filter(Boolean);
 
   return (
-    <article className="music-card grid overflow-hidden border border-white/12 bg-[#181817] text-white lg:grid-cols-[minmax(19rem,0.86fr)_1.14fr]">
-      <div className="relative aspect-square min-h-80 overflow-hidden bg-black lg:aspect-auto lg:min-h-[38rem]">
-        <TrackArtwork item={item} />
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/70 to-transparent p-5">
-          <span className="bg-[var(--music-accent)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-black">
-            {item.sourceLabel}
-          </span>
-          {item.rank && (
-            <span className="text-xs font-black tracking-wide">#{item.rank}</span>
-          )}
-        </div>
-      </div>
+    <article className="pf-feature-card relative overflow-hidden">
+      {item.artworkUrl && (
+        <img
+          src={item.artworkUrl}
+          alt=""
+          className="absolute inset-0 size-full scale-110 object-cover opacity-15 blur-3xl"
+        />
+      )}
+      <div className="pf-feature-wash absolute inset-0" />
 
-      <div className="flex min-w-0 flex-col p-7 sm:p-10 lg:p-12">
-        <div className="mb-8 flex items-center justify-between gap-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/40">
-            Your next repeat
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/30">
-            1 of {poolSize}
-          </p>
-        </div>
-
-        <h1 className="display-serif max-w-[16ch] text-[clamp(2.8rem,7vw,5rem)] font-bold leading-[0.9] tracking-[-0.05em]">
-          {item.title}
-        </h1>
-        <p className="mt-4 text-lg font-bold text-[var(--music-accent)]">
-          {item.artist}
-        </p>
-
-        {trackFacts.length > 0 && (
-          <p className="mt-4 text-[11px] font-bold uppercase leading-6 tracking-[0.14em] text-white/40">
-            {trackFacts.join("  /  ")}
-          </p>
-        )}
-
-        {statFacts.length > 0 && (
-          <div className="mt-7 flex flex-wrap gap-2">
-            {statFacts.map((fact) => (
-              <span
-                key={String(fact)}
-                className="border border-white/15 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/65"
-              >
-                {fact}
-              </span>
-            ))}
+      <div className="relative grid lg:grid-cols-[minmax(20rem,0.9fr)_1.1fr]">
+        <div className="relative aspect-square min-h-80 overflow-hidden bg-black lg:aspect-auto lg:min-h-[42rem]">
+          <TrackArtwork item={item} />
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-5">
+            <span className="pf-source-chip pf-source-chip-music">
+              {item.sourceLabel}
+            </span>
+            {item.rank && <span className="pf-rank">Chart #{item.rank}</span>}
           </div>
-        )}
+        </div>
 
-        {item.previewUrl ? (
-          <div className="mt-8 border-y border-white/10 py-5">
-            <audio
-              key={item.previewUrl}
-              controls
-              preload="none"
-              src={item.previewUrl}
-              className="h-10 w-full"
-            >
-              Your browser does not support audio previews.
-            </audio>
-            <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.13em] text-white/30">
-              Preview provided courtesy of iTunes
+        <div className="flex min-w-0 flex-col p-7 sm:p-10 lg:p-12">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="pf-kicker text-[var(--coral)]">Your next listen</p>
+            <p className="pf-kicker text-white/30">
+              {poolSize} tracks · {artistPoolSize} artists
             </p>
           </div>
-        ) : (
-          <div className="music-wave mt-9" aria-hidden="true">
-            {Array.from({ length: 36 }, (_, index) => (
-              <span
-                key={index}
-                style={{
-                  height: `${12 + ((index * 17) % 52)}px`,
-                  opacity: 0.35 + (index % 5) * 0.12,
-                }}
-              />
-            ))}
-          </div>
-        )}
 
-        <p className="mt-7 border-l-2 border-[var(--music-accent)] pl-3 text-[11px] leading-5 text-white/40">
-          {item.sourceNote}
-        </p>
+          <h2 className="display-serif mt-7 max-w-[15ch] text-[clamp(3rem,7vw,5.7rem)] font-bold leading-[0.86] tracking-[-0.055em] text-white">
+            {item.title}
+          </h2>
+          <p className="mt-4 text-xl font-semibold text-[var(--coral)]">
+            {item.artist}
+          </p>
 
-        <div className="mt-auto flex flex-wrap items-center gap-3 pt-8">
-          <button
-            type="button"
-            onClick={roll}
-            disabled={loading}
-            className="inline-flex items-center gap-2 bg-[var(--music-accent)] px-5 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-black transition hover:bg-white disabled:cursor-wait disabled:opacity-55"
-          >
-            <span className="text-lg leading-none">↻</span>
-            {loading ? "Spinning…" : "Spin again"}
-          </button>
-          <button
-            type="button"
-            onClick={saveTrack}
-            disabled={saving || saved}
-            className="border border-white/20 px-5 py-3.5 text-xs font-black uppercase tracking-[0.12em] transition hover:bg-white/7 disabled:opacity-50"
-          >
-            {saved ? "Saved" : saving ? "Saving…" : "+ Watchlist"}
-          </button>
-          <div className="ml-0 flex gap-4 pt-2 sm:ml-auto sm:pt-0">
-            {item.externalUrl && (
-              <a
-                href={item.externalUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] font-black uppercase tracking-[0.13em] text-white/45 hover:text-white"
+          {trackFacts.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold uppercase tracking-[0.13em] text-white/48">
+              {trackFacts.map((fact) => (
+                <span key={String(fact)} className="pf-fact">
+                  {fact}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {statFacts.length > 0 && (
+            <div className="mt-7 flex flex-wrap gap-2">
+              {statFacts.map((fact) => (
+                <span key={String(fact)} className="pf-stat">
+                  {fact}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {item.mediaType === "track" && item.previewUrl ? (
+            <div className="pf-audio mt-9">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="pf-kicker text-white/40">Listen before you commit</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/25">
+                  iTunes preview
+                </p>
+              </div>
+              <audio
+                key={item.previewUrl}
+                controls
+                preload="none"
+                src={item.previewUrl}
+                className="h-10 w-full"
               >
-                Source ↗
-              </a>
-            )}
-            {item.appleMusicUrl && (
-              <a
-                href={item.appleMusicUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] font-black uppercase tracking-[0.13em] text-white/45 hover:text-white"
+                Your browser does not support audio previews.
+              </audio>
+            </div>
+          ) : (
+            <div className="music-wave mt-10" aria-hidden="true">
+              {Array.from({ length: 42 }, (_, index) => (
+                <span
+                  key={index}
+                  style={{
+                    height: `${12 + ((index * 17) % 52)}px`,
+                    opacity: 0.25 + (index % 5) * 0.12,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="mt-auto pt-9">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={roll}
+                disabled={loading}
+                className="pf-button pf-button-music"
               >
-                Apple Music ↗
-              </a>
-            )}
-            {item.spotifyUrl && (
-              <a
-                href={item.spotifyUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] font-black uppercase tracking-[0.13em] text-[#1ed760] hover:text-white"
+                <span aria-hidden="true">↻</span>
+                {loading ? "Finding another…" : "Spin something else"}
+              </button>
+              <button
+                type="button"
+                onClick={saveTrack}
+                disabled={saving || saved}
+                className="pf-button pf-button-secondary"
               >
-                Spotify ↗
-              </a>
+                <span aria-hidden="true">{saved ? "◆" : "◇"}</span>
+                {saved
+                  ? "Saved"
+                  : saving
+                    ? "Saving…"
+                    : `Save ${item.mediaType}`}
+              </button>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3">
+              {item.spotifyUrl && (
+                <a
+                  href={item.spotifyUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pf-text-link text-[#1ed760]"
+                >
+                  Open in Spotify ↗
+                </a>
+              )}
+              {item.appleMusicUrl && (
+                <a
+                  href={item.appleMusicUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pf-text-link"
+                >
+                  Open in Apple Music ↗
+                </a>
+              )}
+              {item.externalUrl && (
+                <a
+                  href={item.externalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pf-text-link"
+                >
+                  Chart source ↗
+                </a>
+              )}
+            </div>
+
+            {saveMessage && (
+              <p
+                className={`mt-4 text-xs ${
+                  saved ? "text-[var(--coral)]" : "text-[var(--danger)]"
+                }`}
+                role="status"
+              >
+                {saveMessage}
+              </p>
             )}
+            <p className="mt-6 max-w-3xl border-l border-[var(--coral)]/60 pl-3 text-[10px] leading-5 text-white/35">
+              {item.sourceNote}
+            </p>
           </div>
         </div>
-        {saveMessage && (
-          <p
-            className={`mt-3 text-xs ${saved ? "text-[var(--music-accent)]" : "text-[#ff8b72]"}`}
-            role="status"
-          >
-            {saveMessage}
-          </p>
-        )}
       </div>
     </article>
   );
 }
 
 export function MusicRandomizer() {
-  const [source, setSource] = useState<MusicSourceId>("all");
+  const [source, setSource] =
+    useState<MusicSourceId>("rolling-stone-500");
   const [item, setItem] = useState<TrackItem | null>(null);
   const [poolSize, setPoolSize] = useState(0);
+  const [artistPoolSize, setArtistPoolSize] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
+  const recentTracksRef = useRef<string[]>([]);
+  const recentArtistsRef = useRef<string[]>([]);
 
   const roll = useCallback(async () => {
     requestRef.current?.abort();
@@ -321,8 +342,15 @@ export function MusicRandomizer() {
     setError("");
 
     try {
+      const searchParams = new URLSearchParams({ source });
+      recentTracksRef.current.forEach((mediaKey) =>
+        searchParams.append("exclude", mediaKey),
+      );
+      recentArtistsRef.current.forEach((artist) =>
+        searchParams.append("excludeArtist", artist),
+      );
       const response = await fetch(
-        `/api/music/roll?${new URLSearchParams({ source })}`,
+        `/api/music/roll?${searchParams}`,
         { signal: controller.signal, cache: "no-store" },
       );
       const payload = (await response.json()) as MusicRollResponse & ApiError;
@@ -331,6 +359,22 @@ export function MusicRandomizer() {
       }
       setItem(payload.item);
       setPoolSize(payload.poolSize);
+      setArtistPoolSize(payload.artistPoolSize);
+      recentTracksRef.current = [
+        payload.item.mediaKey,
+        ...recentTracksRef.current.filter(
+          (mediaKey) => mediaKey !== payload.item.mediaKey,
+        ),
+      ].slice(0, 10);
+      recentArtistsRef.current = [
+        payload.item.artist,
+        ...recentArtistsRef.current.filter(
+          (artist) =>
+            artist.localeCompare(payload.item.artist, undefined, {
+              sensitivity: "base",
+            }) !== 0,
+        ),
+      ].slice(0, 5);
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
       setError(
@@ -351,80 +395,44 @@ export function MusicRandomizer() {
   const selectedSource = getMusicSource(source);
 
   return (
-    <main className="music-page min-h-screen bg-[#0d0d0c] text-white">
+    <main className="pf-page pf-page-music min-h-screen">
       <div className="grain" />
-      <header className="border-b border-white/10">
-        <div className="mx-auto flex max-w-[86rem] items-center justify-between px-4 py-4 sm:px-7">
-          <a href="/" className="flex items-center gap-3" aria-label="Pickfilm home">
-            <span className="grid size-8 place-items-center bg-[var(--music-accent)] text-lg font-black text-black">
-              ♪
-            </span>
-            <span className="text-sm font-black uppercase tracking-[0.22em]">
-              Pickfilm
-            </span>
-          </a>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <nav
-              aria-label="Primary navigation"
-              className="flex items-center gap-1 rounded-full border border-white/10 p-1 text-[10px] font-black uppercase tracking-[0.13em]"
-            >
-              <a href="/" className="rounded-full px-3 py-1.5 text-white/45 hover:text-white">
-                Watch
-              </a>
-              <a
-                href="/music"
-                aria-current="page"
-                className="rounded-full bg-white px-3 py-1.5 text-black"
-              >
-                Music
-              </a>
-            </nav>
-            <div className="music-auth">
-              <AuthControl />
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader current="music" />
 
-      <section className="mx-auto max-w-[86rem] px-4 pb-12 pt-9 sm:px-7 sm:pt-12">
-        <div className="mb-9 grid gap-7 border-b border-white/10 pb-9 lg:grid-cols-[1fr_29rem] lg:items-end">
+      <section className="pf-container pb-12 pt-10 sm:pt-14">
+        <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_minmax(22rem,32rem)] lg:items-end">
           <div>
-            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.21em] text-[var(--music-accent)]">
-              Global charts · one random track
+            <p className="pf-kicker text-[var(--coral)]">
+              Worldwide music canon
             </p>
-            <h2 className="display-serif max-w-4xl text-[clamp(2.8rem,7vw,5.8rem)] font-bold leading-[0.86] tracking-[-0.05em]">
-              Find your next
+            <h1 className="display-serif mt-4 max-w-4xl text-[clamp(3.3rem,8vw,7rem)] font-bold leading-[0.82] tracking-[-0.06em] text-white">
+              Find the track
               <br />
-              <em className="font-normal">repeat.</em>
-            </h2>
+              <em className="font-normal text-white/45">you won’t skip.</em>
+            </h1>
+            <p className="mt-6 max-w-xl text-sm leading-7 text-white/48 sm:text-base">
+              A single global pick from ranked songs and albums, enriched with
+              cover art and direct listening links.
+            </p>
           </div>
 
-          <div>
-            <label
-              htmlFor="music-source"
-              className="mb-2 block text-[10px] font-black uppercase tracking-[0.17em] text-white/40"
-            >
-              Spin from
+          <div className="pf-picker pf-picker-music">
+            <label className="pf-field">
+              <span>Choose a chart period</span>
+              <select
+                value={source}
+                onChange={(event) =>
+                  setSource(event.target.value as MusicSourceId)
+                }
+              >
+                {MUSIC_SOURCES.map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.label}
+                  </option>
+                ))}
+              </select>
             </label>
-            <select
-              id="music-source"
-              value={source}
-              onChange={(event) =>
-                setSource(event.target.value as MusicSourceId)
-              }
-              className="w-full appearance-none border border-white/20 bg-transparent px-4 py-3.5 text-sm font-bold text-white"
-            >
-              {MUSIC_SOURCES.map((candidate) => (
-                <option
-                  key={candidate.id}
-                  value={candidate.id}
-                  className="bg-[#181817]"
-                >
-                  {candidate.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-3 text-xs leading-5 text-white/40">
+            <p className="mt-4 text-xs leading-5 text-white/38">
               {selectedSource.description}
             </p>
           </div>
@@ -439,6 +447,7 @@ export function MusicRandomizer() {
             <MusicResult
               item={item}
               poolSize={poolSize}
+              artistPoolSize={artistPoolSize}
               loading={loading}
               roll={roll}
             />
@@ -446,17 +455,14 @@ export function MusicRandomizer() {
         </div>
 
         {error && item && (
-          <p
-            className="mt-4 border border-[#ff8b72]/20 bg-[#ff8b72]/8 px-4 py-3 text-sm text-[#ffac9a]"
-            role="alert"
-          >
+          <p className="pf-inline-error" role="alert">
             {error}
           </p>
         )}
 
-        <footer className="mt-8 flex flex-col gap-3 border-t border-white/10 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/25 sm:flex-row sm:justify-between">
-          <p>ListenBrainz works without a key · Every spin is server-randomized</p>
-          <p>Spotify and Apple links open the matched track</p>
+        <footer className="pf-footer">
+          <p>500 ranked albums stored locally · Live charts fail over safely</p>
+          <p>Spotify and Apple links open the matched recording</p>
         </footer>
       </section>
     </main>

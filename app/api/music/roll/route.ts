@@ -13,6 +13,20 @@ function isMusicSource(value: string | null): value is MusicSourceId {
   return MUSIC_SOURCE_IDS.some((source) => source === value);
 }
 
+function readExclusions(
+  request: NextRequest,
+  key: "exclude" | "excludeArtist",
+): string[] {
+  return [
+    ...new Set(
+      request.nextUrl.searchParams
+        .getAll(key)
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0 && value.length <= 160),
+    ),
+  ].slice(0, 12);
+}
+
 export async function GET(request: NextRequest) {
   const source = request.nextUrl.searchParams.get("source");
   if (!isMusicSource(source)) {
@@ -27,7 +41,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await rollMusic(source);
+    const result = await rollMusic(source, {
+      mediaKeys: readExclusions(request, "exclude"),
+      artists: readExclusions(request, "excludeArtist"),
+    });
     return NextResponse.json(result, {
       headers: { "Cache-Control": "no-store" },
     });

@@ -12,6 +12,13 @@ export const MUSIC_SOURCES: readonly MusicSourceDefinition[] = [
       "An equal blend of every configured global music chart.",
   },
   {
+    id: "rolling-stone-500",
+    label: "Rolling Stone · 500 Albums",
+    shortLabel: "RS 500",
+    description:
+      "The complete Rolling Stone 500 Greatest Albums ranking, stored locally for reliable global discovery.",
+  },
+  {
     id: "listenbrainz-week",
     label: "ListenBrainz · This week",
     shortLabel: "LB week",
@@ -31,21 +38,6 @@ export const MUSIC_SOURCES: readonly MusicSourceDefinition[] = [
     shortLabel: "LB all time",
     description:
       "ListenBrainz's sitewide all-time recording chart.",
-  },
-  {
-    id: "lastfm-global",
-    label: "Last.fm Global Top Tracks",
-    shortLabel: "Last.fm",
-    description: "The current global top-tracks chart from Last.fm.",
-    requires: ["LASTFM_API_KEY"],
-  },
-  {
-    id: "apple-top-songs",
-    label: "Apple Music Top Songs",
-    shortLabel: "Apple Music",
-    description:
-      "Apple Music's most-played songs for the configured storefront.",
-    requires: ["APPLE_MUSIC_DEVELOPER_TOKEN"],
   },
 ] as const;
 

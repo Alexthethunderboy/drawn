@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #171714;
-  --paper: #f3f0e8;
-  --paper-deep: #e8e2d6;
-  --acid: #d8ff3e;
-  --muted: #6d6a62;
-  --line: rgba(23, 23, 20, 0.17);
-  --music-accent: #d8ff3e;
+  --ink: #080a08;
+  --surface: #10130f;
+  --surface-raised: #171b15;
+  --surface-soft: #20251d;
+  --paper: #f4f1e9;
+  --lime: #d8ff4f;
+  --coral: #ff765f;
+  --danger: #ff8b7b;
+  --line: rgba(255, 255, 255, 0.12);
+  --music-accent: var(--coral);
 }
 
 * {
@@ -15,17 +18,22 @@
 }
 
 html {
+  min-width: 320px;
   background: var(--ink);
+  color-scheme: dark;
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  color: var(--ink);
-  background:
-    radial-gradient(circle at 86% 10%, rgba(216, 255, 62, 0.13), transparent 24rem),
-    var(--paper);
-  font-family: Arial, Helvetica, sans-serif;
+  color: white;
+  background: var(--ink);
+  font-family:
+    Arial,
+    "Helvetica Neue",
+    Helvetica,
+    sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -34,63 +42,498 @@ select {
   font: inherit;
 }
 
-button {
+button,
+select {
   cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
-  outline: 3px solid var(--acid);
+select:focus-visible,
+a:focus-visible,
+audio:focus-visible {
+  outline: 3px solid var(--lime);
   outline-offset: 3px;
 }
 
 ::selection {
   color: var(--ink);
-  background: var(--acid);
+  background: var(--lime);
 }
 
 .display-serif {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family:
+    "Iowan Old Style",
+    "Baskerville",
+    "Times New Roman",
+    serif;
 }
 
-.grain {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+.pf-page {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 82% 9%, rgba(216, 255, 79, 0.11), transparent 26rem),
+    radial-gradient(circle at 8% 42%, rgba(118, 148, 255, 0.055), transparent 30rem),
+    var(--ink);
 }
 
-.media-card {
-  box-shadow: 0 28px 70px rgba(28, 27, 22, 0.2);
+.pf-page-music {
+  background:
+    radial-gradient(circle at 84% 10%, rgba(255, 118, 95, 0.13), transparent 27rem),
+    radial-gradient(circle at 4% 55%, rgba(143, 104, 255, 0.07), transparent 32rem),
+    var(--ink);
+}
+
+.pf-page-books {
+  --lime: #a9c3ff;
+  background:
+    radial-gradient(circle at 84% 10%, rgba(169, 195, 255, 0.13), transparent 27rem),
+    radial-gradient(circle at 4% 55%, rgba(97, 135, 224, 0.07), transparent 32rem),
+    var(--ink);
+}
+
+.pf-container {
+  width: min(100% - 2rem, 88rem);
+  margin-inline: auto;
+}
+
+.pf-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(8, 10, 8, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.pf-wordmark {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pf-wordmark > span:last-child {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.pf-wordmark strong {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.pf-wordmark small {
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.34);
+  text-transform: uppercase;
+}
+
+.pf-logo-mark {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, 0.32rem);
+  place-content: center;
+  gap: 0.32rem;
+  border-radius: 0.55rem;
+  color: var(--ink);
+  background: var(--lime);
+  box-shadow: 0 0 0 1px rgba(216, 255, 79, 0.2);
+  transform: rotate(-3deg);
+}
+
+.pf-logo-mark i {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.pf-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.22rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.pf-nav a {
+  min-height: 2rem;
+  padding: 0.62rem 0.85rem 0.5rem;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.59rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.pf-nav a:hover {
+  color: white;
+}
+
+.pf-nav a[aria-current="page"] {
+  color: var(--ink);
+  background: white;
+}
+
+.pf-kicker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.pf-picker {
+  position: relative;
+  padding: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(216, 255, 79, 0.65);
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 55px rgba(0, 0, 0, 0.22);
+}
+
+.pf-picker-music {
+  border-top-color: rgba(255, 118, 95, 0.75);
+}
+
+.pf-field {
+  display: grid;
+  gap: 0.48rem;
+}
+
+.pf-field > span {
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 0.57rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pf-field select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 2.5rem 0 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 0.65rem;
+  color: white;
+  background:
+    linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.55) 50%)
+      calc(100% - 1rem) 1.25rem / 0.35rem 0.35rem no-repeat,
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55) 50%, transparent 50%)
+      calc(100% - 0.72rem) 1.25rem / 0.35rem 0.35rem no-repeat,
+    rgba(0, 0, 0, 0.18);
+  font-size: 0.82rem;
+  font-weight: 700;
+  appearance: none;
+}
+
+.pf-field select:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.pf-field option {
+  color: white;
+  background: #11140f;
+}
+
+.pf-feature-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.35rem;
+  color: white;
+  background: rgba(15, 18, 14, 0.94);
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.42),
+    inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.pf-feature-wash {
+  background:
+    linear-gradient(90deg, rgba(8, 10, 8, 0.52), rgba(8, 10, 8, 0.86) 42%, rgba(8, 10, 8, 0.98)),
+    linear-gradient(0deg, rgba(8, 10, 8, 0.95), transparent 70%);
+}
+
+.pf-source-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.7rem;
+  padding: 0.4rem 0.65rem 0.32rem;
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--lime);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+.pf-source-chip-music {
+  background: var(--coral);
+}
+
+.pf-rank {
+  padding: 0.45rem 0.65rem 0.38rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(10px);
+  font-size: 0.57rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pf-poster-fallback {
+  background:
+    linear-gradient(150deg, rgba(216, 255, 79, 0.38), transparent 47%),
+    repeating-linear-gradient(
+      135deg,
+      #10130f,
+      #10130f 15px,
+      #1a1e17 15px,
+      #1a1e17 30px
+    );
+}
+
+.pf-fact {
+  position: relative;
+}
+
+.pf-fact:not(:last-child)::after {
+  position: absolute;
+  right: -0.65rem;
+  color: rgba(255, 255, 255, 0.2);
+  content: "•";
+}
+
+.pf-rating {
+  display: inline-flex;
+  min-height: 2.15rem;
+  align-items: center;
+  gap: 0.48rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.55rem;
+  color: rgba(255, 255, 255, 0.46);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.pf-rating i {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+}
+
+.pf-rating strong {
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.pf-detail {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.pf-detail dt {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pf-detail dd {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.77rem;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.pf-button {
+  display: inline-flex;
+  min-height: 2.9rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.8rem 1.05rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.pf-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.pf-button:disabled {
+  opacity: 0.5;
+}
+
+.pf-button-primary {
+  color: var(--ink);
+  background: var(--lime);
+  box-shadow: 0 10px 30px rgba(216, 255, 79, 0.13);
+}
+
+.pf-button-primary:hover:not(:disabled) {
+  background: white;
+}
+
+.pf-button-music {
+  color: var(--ink);
+  background: var(--coral);
+  box-shadow: 0 10px 30px rgba(255, 118, 95, 0.14);
+}
+
+.pf-button-music:hover:not(:disabled) {
+  background: white;
+}
+
+.pf-button-secondary {
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.pf-button-secondary:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.34);
+  color: white;
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.pf-text-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding-inline: 0.35rem;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.59rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 150ms ease;
+}
+
+.pf-text-link:hover {
+  color: white;
+}
+
+.pf-stat {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.68rem 0.42rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pf-audio {
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.pf-audio audio {
+  color-scheme: dark;
+}
+
+.pf-inline-error {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 139, 123, 0.22);
+  border-radius: 0.7rem;
+  color: var(--danger);
+  background: rgba(255, 139, 123, 0.07);
+  font-size: 0.8rem;
+}
+
+.pf-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.23);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.6;
+  text-transform: uppercase;
 }
 
 .poster-skeleton {
   background:
-    linear-gradient(115deg, transparent 35%, rgba(255,255,255,.35) 48%, transparent 61%),
-    var(--paper-deep);
+    linear-gradient(
+      110deg,
+      transparent 34%,
+      rgba(255, 255, 255, 0.08) 48%,
+      transparent 62%
+    ),
+    #181c16;
   background-size: 220% 100%;
-  animation: shimmer 1.25s infinite linear;
-}
-
-.poster-fallback {
-  background:
-    linear-gradient(145deg, rgba(216, 255, 62, 0.85), rgba(216, 255, 62, 0.05) 48%),
-    repeating-linear-gradient(
-      135deg,
-      var(--ink),
-      var(--ink) 14px,
-      #292925 14px,
-      #292925 28px
-    );
+  animation: shimmer 1.3s infinite linear;
 }
 
 .loading-line {
   overflow: hidden;
   position: relative;
-  background: #ded9ce;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .loading-line::after {
@@ -98,25 +541,19 @@ select:focus-visible {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
-  animation: shimmer-line 1.15s infinite;
-}
-
-.synopsis-clamp {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 8;
-}
-
-.music-card {
-  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.42);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: shimmer-line 1.2s infinite;
 }
 
 .music-art-fallback {
   background:
-    radial-gradient(circle at 25% 20%, rgba(216, 255, 62, 0.25), transparent 32%),
-    linear-gradient(145deg, #302f32, #111110);
+    radial-gradient(circle at 28% 18%, rgba(255, 118, 95, 0.3), transparent 34%),
+    linear-gradient(145deg, #302522, #0c0d0b);
 }
 
 .music-record {
@@ -127,14 +564,14 @@ select:focus-visible {
   background:
     repeating-radial-gradient(
       circle,
-      #151515 0,
-      #151515 4px,
-      #262626 5px,
-      #171717 7px
+      #111210 0,
+      #111210 4px,
+      #252420 5px,
+      #151613 7px
     );
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 28px 50px rgba(0, 0, 0, 0.42);
+    0 28px 55px rgba(0, 0, 0, 0.48);
 }
 
 .music-record::before {
@@ -142,15 +579,15 @@ select:focus-visible {
   position: absolute;
   inset: 34%;
   border-radius: 999px;
-  background: var(--music-accent);
+  background: var(--coral);
 }
 
 .music-record span {
   position: absolute;
+  z-index: 1;
   inset: 47%;
   border-radius: 999px;
-  background: #0d0d0c;
-  z-index: 1;
+  background: var(--ink);
 }
 
 .music-wave {
@@ -165,26 +602,21 @@ select:focus-visible {
   display: block;
   width: 3px;
   min-width: 3px;
+  border-radius: 999px;
   background: linear-gradient(
     to top,
-    var(--music-accent),
-    rgba(216, 255, 62, 0.16)
+    var(--coral),
+    rgba(255, 118, 95, 0.15)
   );
 }
 
-.music-page select {
-  color-scheme: dark;
-}
-
-.music-auth > span,
-.music-auth > div > button {
-  border-color: rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.78);
-  background-color: rgba(255, 255, 255, 0.04);
-}
-
-.music-page audio {
-  color-scheme: dark;
+.grain {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
 }
 
 @keyframes shimmer {
@@ -199,6 +631,63 @@ select:focus-visible {
   }
 }
 
+@media (min-width: 640px) {
+  .pf-container {
+    width: min(100% - 3.5rem, 88rem);
+  }
+
+  .pf-picker {
+    padding: 1.35rem;
+  }
+
+  .pf-footer {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+@media (max-width: 639px) {
+  .pf-wordmark small {
+    display: none;
+  }
+
+  .pf-wordmark {
+    gap: 0.5rem;
+  }
+
+  .pf-logo-mark {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .pf-nav a {
+    padding-inline: 0.65rem;
+  }
+
+  .pf-feature-card {
+    border-radius: 1rem;
+  }
+
+  .pf-feature-wash {
+    background: linear-gradient(
+      0deg,
+      rgba(8, 10, 8, 0.98),
+      rgba(8, 10, 8, 0.76)
+    );
+  }
+}
+
+@media (max-width: 400px) {
+  .pf-wordmark strong {
+    display: none;
+  }
+
+  .pf-nav a {
+    padding-inline: 0.58rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -206,5 +695,6 @@ select:focus-visible {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

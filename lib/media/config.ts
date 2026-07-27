@@ -49,11 +49,11 @@ export const SOURCES: readonly SourceDefinition[] = [
     requires: ["TRAKT_CLIENT_ID"],
   },
   {
-    id: "imdb-top-250",
-    label: "IMDb Top 250 · exact",
-    shortLabel: "IMDb 250",
+    id: "imdb-top-1000",
+    label: "IMDb Top 1000",
+    shortLabel: "IMDb 1000",
     description:
-      "The literal current IMDb movie chart through your configured RapidAPI proxy.",
+      "A paginated Top 1000 movie dataset through your configured RapidAPI provider.",
     kind: "exact",
     categories: ["movies"],
     requires: ["RAPIDAPI_KEY"],
@@ -110,6 +110,51 @@ export const SOURCES: readonly SourceDefinition[] = [
     description: "The most popular anime returned by Jikan.",
     kind: "native",
     categories: ["anime"],
+  },
+  {
+    id: "letterboxd-most-fans",
+    label: "Letterboxd · Most Fans 250",
+    shortLabel: "Letterboxd fans",
+    description:
+      "The complete official Letterboxd ranking of 250 narrative films with the most member fans.",
+    kind: "exact",
+    categories: ["movies"],
+  },
+  {
+    id: "rt-anime-movies",
+    label: "Rotten Tomatoes · Anime 100",
+    shortLabel: "RT anime",
+    description:
+      "Rotten Tomatoes' 100 best anime movies, preserved in Tomatometer rank order.",
+    kind: "exact",
+    categories: ["anime"],
+  },
+  {
+    id: "imdb-animated-movies",
+    label: "IMDb · Animated 35",
+    shortLabel: "IMDb animated",
+    description:
+      "The 35-title IMDb list based on Rotten Tomatoes' top animated movies.",
+    kind: "exact",
+    categories: ["anime"],
+  },
+  {
+    id: "rt-documentaries",
+    label: "Rotten Tomatoes · Docs 100",
+    shortLabel: "RT docs",
+    description:
+      "Rotten Tomatoes' 100 best-reviewed documentaries in exact list order.",
+    kind: "exact",
+    categories: ["docs"],
+  },
+  {
+    id: "letterboxd-documentaries",
+    label: "Letterboxd · Docs 250",
+    shortLabel: "Letterboxd docs",
+    description:
+      "The complete official Letterboxd Top 250 Documentary Films ranking.",
+    kind: "exact",
+    categories: ["docs"],
   },
 ] as const;
 
