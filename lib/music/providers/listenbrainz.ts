@@ -52,7 +52,7 @@ export async function fetchListenBrainzTracks(
   url.searchParams.set("offset", String(page * PAGE_SIZE));
 
   const payload = await fetchJson<ListenBrainzResponse>(url, {
-    headers: { "User-Agent": "Pickfilm/0.1 (music discovery)" },
+    headers: { "User-Agent": "DRAWN/0.1 (music discovery)" },
     next: { revalidate: 3600 },
   });
   const recordings = payload.payload?.recordings;

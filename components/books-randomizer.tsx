@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWatchlist } from "@/components/app-providers";
+import { DrawReady, DrawRitual } from "@/components/draw-ritual";
 import { SiteHeader } from "@/components/site-header";
 import { BOOK_SOURCES, getBookSource } from "@/lib/books/config";
+import { waitForDrawMoment } from "@/lib/draw";
 import type {
   BookItem,
   BookRollResponse,
@@ -23,43 +25,45 @@ function compactNumber(value: number | undefined): string | undefined {
 }
 
 function BookCover({ item }: { item: BookItem }) {
-  const [broken, setBroken] = useState(false);
+  const [coverIndex, setCoverIndex] = useState(0);
+  const coverUrls =
+    item.coverUrls?.length
+      ? item.coverUrls
+      : item.coverUrl
+        ? [item.coverUrl]
+        : [];
+  const coverUrl = coverUrls[coverIndex];
 
-  useEffect(() => setBroken(false), [item.mediaKey, item.coverUrl]);
+  useEffect(() => setCoverIndex(0), [item.mediaKey, item.coverUrl]);
 
-  if (item.coverUrl && !broken) {
+  if (coverUrl) {
     return (
       <img
-        src={item.coverUrl}
+        src={coverUrl}
         alt={`${item.title} book cover`}
         width={600}
         height={900}
         className="absolute inset-0 size-full object-cover"
-        onError={() => setBroken(true)}
+        onError={() => setCoverIndex((index) => index + 1)}
       />
     );
   }
 
   return (
-    <div className="pf-poster-fallback absolute inset-0 flex flex-col justify-end p-7">
-      <span className="pf-kicker text-[var(--lime)]">Cover unavailable</span>
-      <p className="display-serif mt-3 max-w-[10ch] text-4xl font-bold leading-[0.9] text-white">
+    <div
+      className="book-cover-fallback absolute inset-0 flex flex-col p-8"
+      role="img"
+      aria-label={`Designed cover for ${item.title} by ${item.author}`}
+    >
+      <span className="book-cover-spine" aria-hidden="true" />
+      <span className="pf-kicker text-black/50">DRAWN editions</span>
+      <span className="book-cover-rule mt-6" aria-hidden="true" />
+      <p className="display-serif mt-auto max-w-[10ch] text-[clamp(2.3rem,5vw,4.25rem)] font-bold leading-[0.86] tracking-[-0.045em] text-[#0b1428]">
         {item.title}
       </p>
-    </div>
-  );
-}
-
-function BookLoadingCard() {
-  return (
-    <div className="pf-feature-card grid min-h-[39rem] overflow-hidden lg:grid-cols-[minmax(17rem,22rem)_1fr]">
-      <div className="poster-skeleton aspect-[2/3] lg:aspect-auto" />
-      <div className="flex flex-col p-6 sm:p-9 lg:p-12">
-        <div className="loading-line mb-8 h-4 w-32" />
-        <div className="loading-line mb-3 h-14 w-10/12" />
-        <div className="loading-line mb-10 h-8 w-5/12" />
-        <div className="loading-line mt-auto h-12 w-44" />
-      </div>
+      <p className="mt-5 text-xs font-black uppercase tracking-[0.14em] text-black/55">
+        {item.author}
+      </p>
     </div>
   );
 }
@@ -98,18 +102,18 @@ function BookResult({
   }
 
   return (
-    <article className="pf-feature-card relative overflow-hidden">
-      {item.coverUrl && (
+    <article className="pf-draw-reveal pf-feature-card relative overflow-hidden">
+      {(item.coverUrls?.[0] ?? item.coverUrl) && (
         <img
-          src={item.coverUrl}
+          src={item.coverUrls?.[0] ?? item.coverUrl}
           alt=""
           className="absolute inset-0 size-full scale-110 object-cover opacity-15 blur-3xl"
         />
       )}
       <div className="pf-feature-wash absolute inset-0" />
 
-      <div className="relative grid lg:grid-cols-[minmax(17rem,22rem)_1fr]">
-        <div className="relative aspect-[2/3] overflow-hidden bg-[#11130f] lg:aspect-auto lg:min-h-[43rem]">
+      <div className="relative grid md:grid-cols-[minmax(17rem,21rem)_1fr]">
+        <div className="relative aspect-[2/3] overflow-hidden bg-[#11130f] md:aspect-auto md:min-h-[43rem]">
           <BookCover item={item} />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
             <span className="pf-source-chip">{item.sourceLabel}</span>
@@ -119,9 +123,9 @@ function BookResult({
 
         <div className="flex min-w-0 flex-col p-6 sm:p-9 lg:p-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="pf-kicker text-[var(--lime)]">Your next read</p>
+            <p className="pf-kicker text-[var(--lime)]">Your book draw</p>
             <p className="pf-kicker text-white/30">
-              Randomized from {poolSize} books
+              Drawn from {poolSize} books
             </p>
           </div>
 
@@ -159,7 +163,7 @@ function BookResult({
                 className="pf-button pf-button-primary"
               >
                 <span aria-hidden="true">↻</span>
-                {loading ? "Finding another…" : "Roll another book"}
+                {loading ? "Drawing another…" : "Draw another book"}
               </button>
               <button
                 type="button"
@@ -210,7 +214,7 @@ export function BooksRandomizer() {
   const [source, setSource] = useState<BookSourceId>("all");
   const [item, setItem] = useState<BookItem | null>(null);
   const [poolSize, setPoolSize] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
   const recentRef = useRef<string[]>([]);
@@ -218,6 +222,7 @@ export function BooksRandomizer() {
   const roll = useCallback(async () => {
     requestRef.current?.abort();
     const controller = new AbortController();
+    const startedAt = performance.now();
     requestRef.current = controller;
     setLoading(true);
     setError("");
@@ -233,6 +238,7 @@ export function BooksRandomizer() {
       if (!response.ok) {
         throw new Error(payload.error ?? "This book list could not be loaded.");
       }
+      await waitForDrawMoment(startedAt, controller.signal);
       setItem(payload.item);
       setPoolSize(payload.poolSize);
       recentRef.current = [
@@ -252,11 +258,20 @@ export function BooksRandomizer() {
   }, [source]);
 
   useEffect(() => {
-    roll();
     return () => requestRef.current?.abort();
-  }, [roll]);
+  }, []);
+
+  function chooseSource(nextSource: BookSourceId) {
+    requestRef.current?.abort();
+    requestRef.current = null;
+    setLoading(false);
+    setError("");
+    setItem(null);
+    setSource(nextSource);
+  }
 
   const selectedSource = getBookSource(source);
+  const selectionLabel = selectedSource.label;
 
   return (
     <main className="pf-page pf-page-books min-h-screen">
@@ -278,7 +293,7 @@ export function BooksRandomizer() {
             </h1>
             <p className="mt-6 max-w-xl text-sm leading-7 text-white/48 sm:text-base">
               One pick from bestselling and critically aggregated book lists,
-              with optional Open Library cover matching.
+              with cover matching from Open Library and Google Books.
             </p>
           </div>
 
@@ -288,7 +303,7 @@ export function BooksRandomizer() {
               <select
                 value={source}
                 onChange={(event) =>
-                  setSource(event.target.value as BookSourceId)
+                  chooseSource(event.target.value as BookSourceId)
                 }
               >
                 {BOOK_SOURCES.map((candidate) => (
@@ -305,14 +320,24 @@ export function BooksRandomizer() {
         </div>
 
         <div aria-live="polite" aria-busy={loading}>
-          {loading && !item ? (
-            <BookLoadingCard />
+          {loading ? (
+            <DrawRitual
+              tone="books"
+              selectionLabel={selectionLabel}
+            />
           ) : item ? (
             <BookResult
+              key={item.mediaKey}
               item={item}
               poolSize={poolSize}
               loading={loading}
               roll={roll}
+            />
+          ) : !error ? (
+            <DrawReady
+              tone="books"
+              selectionLabel={selectionLabel}
+              onDraw={roll}
             />
           ) : (
             <div className="pf-feature-card grid min-h-[30rem] place-items-center p-8 text-center">
@@ -341,7 +366,7 @@ export function BooksRandomizer() {
 
         <footer className="pf-footer">
           <p>125 ranked books stored locally · Exact published list order</p>
-          <p>Open Library metadata is optional and never blocks a roll</p>
+          <p>Multiple cover sources fail over to a designed edition</p>
         </footer>
       </section>
     </main>

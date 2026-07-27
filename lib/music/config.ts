@@ -6,8 +6,8 @@ import type {
 export const MUSIC_SOURCES: readonly MusicSourceDefinition[] = [
   {
     id: "all",
-    label: "All charts",
-    shortLabel: "All charts",
+    label: "All",
+    shortLabel: "All",
     description:
       "An equal blend of every configured global music chart.",
   },

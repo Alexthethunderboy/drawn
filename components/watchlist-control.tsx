@@ -140,7 +140,7 @@ export function WatchlistControl({
         type="button"
         onClick={() => setOpen((value) => !value)}
         disabled={authLoading}
-        className={`max-w-40 truncate rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] transition disabled:opacity-50 ${
+        className={`min-h-11 max-w-40 truncate rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] transition disabled:opacity-50 ${
           dark
             ? "border-white/15 bg-white/4 text-white/75 hover:bg-white/10"
             : "border-black/15 bg-white/40 text-black/65 hover:bg-white"

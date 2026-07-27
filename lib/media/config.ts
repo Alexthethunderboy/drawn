@@ -14,8 +14,8 @@ export const CATEGORY_LABELS: Record<MediaCategory, string> = {
 export const SOURCES: readonly SourceDefinition[] = [
   {
     id: "all",
-    label: "All charts",
-    shortLabel: "All charts",
+    label: "All",
+    shortLabel: "All",
     description: "An even blend of every configured chart available here.",
     kind: "blend",
     categories: ["movies", "tv", "anime", "docs"],

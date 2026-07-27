@@ -1,8 +1,12 @@
-# Pickfilm
+# DRAWN
 
-A server-randomized media and music picker built with Next.js App Router,
+A server-randomized culture picker built with Next.js App Router,
 React, Tailwind CSS, a lightweight username/PIN profile system, and a
 deliberately broad set of ranking providers.
+
+**Drawn from the best.** DRAWN chooses one excellent film, series, anime,
+documentary, album, song, or book from credible global rankings so the user can
+spend less time choosing and more time enjoying the result.
 
 ## Chart routing
 
@@ -60,7 +64,7 @@ All provider secrets stay server-side.
 
 ## Username/PIN profiles
 
-Pickfilm uses a small Cloudflare D1 database rather than Supabase. A visitor can
+DRAWN uses a small Cloudflare D1 database rather than Supabase. A visitor can
 create a username with a 4–8 digit PIN, sign in on another device, and access
 the same saved movies, shows, anime, documentaries, and tracks. PINs are salted
 and PBKDF2-hashed before storage; sessions use an HTTP-only, same-site cookie.
@@ -100,6 +104,18 @@ npm run build
 ```
 
 `npm run dev` uses Vinext so the local D1 binding is available.
+GitHub Actions runs the same checks for pull requests and pushes to `main`.
+
+## Deployment
+
+The repository is configured for OpenAI Sites through
+`.openai/hosting.json`. Sites supplies the Cloudflare D1 binding named `DB`;
+provider credentials from `.env.example` must be configured as hosted runtime
+values and must not be committed. The production artifact is created with:
+
+```bash
+npm run build:sites
+```
 
 ## Provider references
 
@@ -150,8 +166,9 @@ The `/books` page uses two exact, browser-verified local sources:
 | Goodreads Best Selling Books of All Time | 100 |
 | The Greatest Books, supplied page 2 | 25 (ranks 26–50) |
 
-Open Library is optional metadata enrichment for the one selected book. An
-Open Library outage cannot block a roll.
+Open Library and Google Books are optional, credential-free cover enrichment
+for the one selected book. The UI cycles through available cover candidates
+and uses a designed DRAWN edition when upstream artwork is unavailable.
 
 ## Browser-verified catalogs
 

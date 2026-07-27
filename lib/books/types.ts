@@ -21,6 +21,7 @@ export interface BookItem {
   year?: number;
   synopsis: string;
   coverUrl?: string;
+  coverUrls?: string[];
   externalUrl?: string;
   openLibraryUrl?: string;
   rating?: number;

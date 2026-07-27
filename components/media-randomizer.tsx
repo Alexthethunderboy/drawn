@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWatchlist } from "@/components/app-providers";
+import { DrawReady, DrawRitual } from "@/components/draw-ritual";
 import { SiteHeader } from "@/components/site-header";
+import { waitForDrawMoment } from "@/lib/draw";
 import {
   CATEGORY_LABELS,
   getSourcesForCategory,
@@ -123,29 +125,6 @@ function Detail({
   );
 }
 
-function LoadingCard() {
-  return (
-    <div className="pf-feature-card grid min-h-[39rem] overflow-hidden lg:grid-cols-[minmax(17rem,22rem)_1fr]">
-      <div className="poster-skeleton aspect-[2/3] lg:aspect-auto" />
-      <div className="flex flex-col p-6 sm:p-9 lg:p-12">
-        <div className="loading-line mb-8 h-4 w-32" />
-        <div className="loading-line mb-3 h-14 w-10/12" />
-        <div className="loading-line mb-10 h-14 w-7/12" />
-        <div className="flex gap-2">
-          <div className="loading-line h-8 w-28" />
-          <div className="loading-line h-8 w-24" />
-        </div>
-        <div className="mt-10 space-y-3">
-          <div className="loading-line h-3 w-full" />
-          <div className="loading-line h-3 w-11/12" />
-          <div className="loading-line h-3 w-8/12" />
-        </div>
-        <div className="loading-line mt-auto h-12 w-44" />
-      </div>
-    </div>
-  );
-}
-
 function EmptyCard({
   error,
   onRetry,
@@ -164,7 +143,7 @@ function EmptyCard({
         </h2>
         <p className="mt-3 text-sm leading-7 text-white/50">{error}</p>
         <button type="button" onClick={onRetry} className="pf-button pf-button-primary mt-7">
-          Try another roll
+          Try another draw
         </button>
       </div>
     </div>
@@ -219,7 +198,7 @@ function ResultCard({
   ].filter(Boolean);
 
   return (
-    <article className="pf-feature-card relative overflow-hidden">
+    <article className="pf-draw-reveal pf-feature-card relative overflow-hidden">
       {(item.backdropUrl ?? item.posterUrl) && (
         <img
           src={item.backdropUrl ?? item.posterUrl}
@@ -229,8 +208,8 @@ function ResultCard({
       )}
       <div className="pf-feature-wash absolute inset-0" />
 
-      <div className="relative grid lg:grid-cols-[minmax(17rem,22rem)_1fr]">
-        <div className="relative aspect-[2/3] overflow-hidden bg-[#11130f] lg:aspect-auto lg:min-h-[43rem]">
+      <div className="relative grid md:grid-cols-[minmax(17rem,21rem)_1fr]">
+        <div className="relative aspect-[2/3] overflow-hidden bg-[#11130f] md:aspect-auto md:min-h-[43rem]">
           <PosterArtwork item={item} />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
             <span className="pf-source-chip">{item.sourceLabel}</span>
@@ -241,10 +220,10 @@ function ResultCard({
         <div className="flex min-w-0 flex-col p-6 sm:p-9 lg:p-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="pf-kicker text-[var(--lime)]">
-              Your pick · {CATEGORY_LABELS[item.category]}
+              Your draw · {CATEGORY_LABELS[item.category]}
             </p>
             <p className="pf-kicker text-white/30">
-              Randomized from {poolSize} titles
+              Drawn from {poolSize} titles
             </p>
           </div>
 
@@ -296,7 +275,7 @@ function ResultCard({
                 className="pf-button pf-button-primary"
               >
                 <span aria-hidden="true">↻</span>
-                {loading ? "Finding another…" : "Roll something else"}
+                {loading ? "Drawing another…" : "Draw something else"}
               </button>
               <button
                 type="button"
@@ -353,7 +332,7 @@ export function MediaRandomizer() {
   const [source, setSource] = useState<SourceId>("all");
   const [item, setItem] = useState<MediaItem | null>(null);
   const [poolSize, setPoolSize] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
 
@@ -365,6 +344,7 @@ export function MediaRandomizer() {
     async (nextCategory = category, nextSource = source) => {
       requestRef.current?.abort();
       const controller = new AbortController();
+      const startedAt = performance.now();
       requestRef.current = controller;
       setLoading(true);
       setError("");
@@ -382,6 +362,7 @@ export function MediaRandomizer() {
         if (!response.ok) {
           throw new Error(payload.error ?? "This chart could not be loaded.");
         }
+        await waitForDrawMoment(startedAt, controller.signal);
         setItem(payload.item);
         setPoolSize(payload.poolSize);
       } catch (caught) {
@@ -399,17 +380,32 @@ export function MediaRandomizer() {
   );
 
   useEffect(() => {
-    roll();
     return () => requestRef.current?.abort();
-  }, [roll]);
+  }, []);
+
+  function resetDraw() {
+    requestRef.current?.abort();
+    requestRef.current = null;
+    setLoading(false);
+    setError("");
+    setItem(null);
+  }
 
   function chooseCategory(nextCategory: MediaCategory) {
+    resetDraw();
     const nextSource = isSourceAvailableForCategory(source, nextCategory)
       ? source
       : "all";
     setCategory(nextCategory);
     setSource(nextSource);
   }
+
+  function chooseSource(nextSource: SourceId) {
+    resetDraw();
+    setSource(nextSource);
+  }
+
+  const selectionLabel = `${CATEGORY_LABELS[category]} · ${selectedSource.label}`;
 
   return (
     <main className="pf-page min-h-screen">
@@ -454,7 +450,9 @@ export function MediaRandomizer() {
                 <span>Choose a chart</span>
                 <select
                   value={source}
-                  onChange={(event) => setSource(event.target.value as SourceId)}
+                  onChange={(event) =>
+                    chooseSource(event.target.value as SourceId)
+                  }
                 >
                   {sources.map((candidate) => (
                     <option key={candidate.id} value={candidate.id}>
@@ -471,18 +469,28 @@ export function MediaRandomizer() {
         </div>
 
         <div aria-live="polite" aria-busy={loading}>
-          {loading && !item ? (
-            <LoadingCard />
+          {loading ? (
+            <DrawRitual
+              tone="watch"
+              selectionLabel={selectionLabel}
+            />
           ) : error && !item ? (
             <EmptyCard error={error} onRetry={() => roll()} />
           ) : item ? (
             <ResultCard
+              key={item.mediaKey}
               item={item}
               poolSize={poolSize}
               onRoll={() => roll()}
               loading={loading}
             />
-          ) : null}
+          ) : (
+            <DrawReady
+              tone="watch"
+              selectionLabel={selectionLabel}
+              onDraw={() => roll()}
+            />
+          )}
         </div>
 
         {error && item && (

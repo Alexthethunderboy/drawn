@@ -3,6 +3,7 @@ import { ensureDb } from "@/db";
 import { createRandomToken, sha256 } from "@/lib/auth/crypto";
 import type { AuthUser } from "@/lib/auth/types";
 
+// Keep the legacy cookie name so the rebrand does not sign existing users out.
 const SESSION_COOKIE = "pickfilm_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 

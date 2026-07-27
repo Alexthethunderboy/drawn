@@ -24,11 +24,32 @@ interface OpenLibraryDocument {
   author_name?: string[];
   first_publish_year?: number;
   cover_i?: number;
+  cover_edition_key?: string;
   first_sentence?: string | string[];
 }
 
 interface OpenLibrarySearch {
   docs?: OpenLibraryDocument[];
+}
+
+interface GoogleBookVolume {
+  id?: string;
+  volumeInfo?: {
+    title?: string;
+    authors?: string[];
+    publishedDate?: string;
+    imageLinks?: {
+      extraLarge?: string;
+      large?: string;
+      medium?: string;
+      thumbnail?: string;
+      smallThumbnail?: string;
+    };
+  };
+}
+
+interface GoogleBooksSearch {
+  items?: GoogleBookVolume[];
 }
 
 function keyPart(value: string): string {
@@ -44,6 +65,71 @@ function normalize(value: string | undefined): string {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function lookupTitle(title: string): string {
+  const withoutSeries = title
+    // Ranking sites often append series metadata that harms cover matching.
+    .replace(/\s*\([^)]*(?:#\d+|series|books?\s+\d)[^)]*\)\s*$/i, "")
+    // Scraped HTML can contain doubled apostrophes in otherwise valid titles.
+    .replace(/'{2,}/g, "'")
+    .trim();
+  const withoutSubtitle = withoutSeries.split(/\s*:\s*/, 1)[0]?.trim();
+  return withoutSubtitle || withoutSeries || title;
+}
+
+function secureImageUrl(value: string | undefined): string | undefined {
+  const url = nonEmptyString(value);
+  return url?.replace(/^http:\/\//i, "https://");
+}
+
+function uniqueUrls(
+  values: readonly (string | undefined)[],
+): string[] {
+  return [
+    ...new Set(
+      values
+        .map(secureImageUrl)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
+}
+
+function matchScore(
+  candidateTitle: string | undefined,
+  candidateAuthors: readonly string[] | undefined,
+  item: BookItem,
+  hasCover: boolean,
+): number {
+  const wantedTitle = normalize(item.title);
+  const shorterTitle = normalize(lookupTitle(item.title));
+  const title = normalize(candidateTitle);
+  const author = normalize(item.author);
+  const authors = (candidateAuthors ?? []).map(normalize);
+
+  let score = 0;
+  if (title === wantedTitle) score += 14;
+  else if (title === shorterTitle) score += 12;
+  else if (
+    title &&
+    shorterTitle &&
+    (title.includes(shorterTitle) || shorterTitle.includes(title))
+  ) {
+    score += 5;
+  }
+
+  if (authors.includes(author)) score += 10;
+  else if (
+    authors.some(
+      (candidate) =>
+        candidate.includes(author) || author.includes(candidate),
+    )
+  ) {
+    score += 4;
+  }
+
+  if (hasCover) score += 6;
+  return score;
 }
 
 function rowsForSource(
@@ -72,6 +158,7 @@ function bookCandidates(
         author: row.author,
         synopsis: `${row.title} by ${row.author}, ranked #${row.rank} on ${definition.label}.`,
         coverUrl: row.cover,
+        coverUrls: row.cover ? [row.cover] : [],
         externalUrl: row.href,
         rating: row.rating,
         ratingCount: row.ratingCount,
@@ -102,55 +189,127 @@ function allBookCandidates(): BookItem[] {
     });
 }
 
-async function enrichBook(item: BookItem): Promise<BookItem> {
-  if (item.coverUrl && item.year) return item;
+async function searchOpenLibrary(item: BookItem) {
+  const url = new URL("https://openlibrary.org/search.json");
+  url.searchParams.set("title", lookupTitle(item.title));
+  url.searchParams.set("author", item.author);
+  url.searchParams.set(
+    "fields",
+    "key,title,author_name,first_publish_year,cover_i,cover_edition_key,first_sentence",
+  );
+  url.searchParams.set("limit", "10");
 
-  try {
-    const url = new URL("https://openlibrary.org/search.json");
-    url.searchParams.set("title", item.title);
-    url.searchParams.set("author", item.author);
-    url.searchParams.set(
-      "fields",
-      "key,title,author_name,first_publish_year,cover_i,first_sentence",
-    );
-    url.searchParams.set("limit", "5");
+  const payload = await fetchJson<OpenLibrarySearch>(url, {
+    next: { revalidate: 86_400 },
+  });
+  return (payload.docs ?? [])
+    .map((document) => ({
+      document,
+      score: matchScore(
+        document.title,
+        document.author_name,
+        item,
+        Boolean(document.cover_i || document.cover_edition_key),
+      ),
+    }))
+    .sort((a, b) => b.score - a.score)[0]?.document;
+}
 
-    const payload = await fetchJson<OpenLibrarySearch>(url, {
-      next: { revalidate: 86_400 },
-    });
-    const documents = payload.docs ?? [];
-    const match =
-      documents.find(
-        (document) =>
-          normalize(document.title) === normalize(item.title) &&
-          document.author_name?.some(
-            (author) => normalize(author) === normalize(item.author),
+async function searchGoogleBooks(item: BookItem) {
+  const url = new URL("https://www.googleapis.com/books/v1/volumes");
+  url.searchParams.set(
+    "q",
+    `intitle:"${lookupTitle(item.title)}" inauthor:"${item.author}"`,
+  );
+  url.searchParams.set("maxResults", "10");
+  url.searchParams.set("printType", "books");
+
+  const payload = await fetchJson<GoogleBooksSearch>(url, {
+    next: { revalidate: 86_400 },
+  });
+  return (payload.items ?? [])
+    .map((volume) => {
+      const links = volume.volumeInfo?.imageLinks;
+      return {
+        volume,
+        score: matchScore(
+          volume.volumeInfo?.title,
+          volume.volumeInfo?.authors,
+          item,
+          Boolean(
+            links?.extraLarge ??
+              links?.large ??
+              links?.medium ??
+              links?.thumbnail,
           ),
-      ) ?? documents[0];
-    if (!match) return item;
+        ),
+      };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.volume;
+}
 
-    const coverId = finiteNumber(match.cover_i);
-    const key = nonEmptyString(match.key);
-    const sentence = Array.isArray(match.first_sentence)
-      ? nonEmptyString(match.first_sentence[0])
-      : nonEmptyString(match.first_sentence);
+async function enrichBook(item: BookItem): Promise<BookItem> {
+  const titleCover = `https://covers.openlibrary.org/b/title/${encodeURIComponent(
+    lookupTitle(item.title),
+  )}-L.jpg?default=false`;
+  const shouldSearch = !item.coverUrl || !item.year;
+  const [openLibraryResult, googleBooksResult] = shouldSearch
+    ? await Promise.allSettled([
+        searchOpenLibrary(item),
+        searchGoogleBooks(item),
+      ])
+    : [undefined, undefined];
+  const openLibrary =
+    openLibraryResult?.status === "fulfilled"
+      ? openLibraryResult.value
+      : undefined;
+  const googleBook =
+    googleBooksResult?.status === "fulfilled"
+      ? googleBooksResult.value
+      : undefined;
+  const openLibraryCoverId = finiteNumber(openLibrary?.cover_i);
+  const openLibraryEdition = nonEmptyString(
+    openLibrary?.cover_edition_key,
+  );
+  const googleLinks = googleBook?.volumeInfo?.imageLinks;
+  const coverUrls = uniqueUrls([
+    item.coverUrl,
+    openLibraryCoverId
+      ? `https://covers.openlibrary.org/b/id/${openLibraryCoverId}-L.jpg?default=false`
+      : undefined,
+    openLibraryEdition
+      ? `https://covers.openlibrary.org/b/olid/${openLibraryEdition}-L.jpg?default=false`
+      : undefined,
+    googleLinks?.extraLarge,
+    googleLinks?.large,
+    googleLinks?.medium,
+    googleLinks?.thumbnail,
+    googleLinks?.smallThumbnail,
+    titleCover,
+    ...(item.coverUrls ?? []),
+  ]);
+  const key = nonEmptyString(openLibrary?.key);
+  const sentence = Array.isArray(openLibrary?.first_sentence)
+    ? nonEmptyString(openLibrary.first_sentence[0])
+    : nonEmptyString(openLibrary?.first_sentence);
+  const googleYear = Number.parseInt(
+    googleBook?.volumeInfo?.publishedDate?.slice(0, 4) ?? "",
+    10,
+  );
 
-    return {
-      ...item,
-      year: finiteNumber(match.first_publish_year) ?? item.year,
-      coverUrl:
-        item.coverUrl ??
-        (coverId
-          ? `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`
-          : undefined),
-      openLibraryUrl: key
-        ? `https://openlibrary.org${key}`
-        : item.openLibraryUrl,
-      synopsis: sentence ?? item.synopsis,
-    };
-  } catch {
-    return item;
-  }
+  return {
+    ...item,
+    year:
+      finiteNumber(openLibrary?.first_publish_year) ??
+      (Number.isFinite(googleYear) ? googleYear : undefined) ??
+      item.year,
+    coverUrl: coverUrls[0],
+    coverUrls,
+    openLibraryUrl: key
+      ? `https://openlibrary.org${key}`
+      : item.openLibraryUrl,
+    synopsis: sentence ?? item.synopsis,
+  };
 }
 
 export async function rollBook(

@@ -109,7 +109,7 @@ export async function fetchTraktCandidates(
   const payload = await fetchJson<unknown>(buildTraktUrl(category, source), {
     headers: {
       "Content-Type": "application/json",
-      "User-Agent": "Pickfilm/0.1",
+      "User-Agent": "DRAWN/0.1",
       "trakt-api-key": clientId,
       "trakt-api-version": "2",
     },

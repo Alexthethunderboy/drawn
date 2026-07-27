@@ -5,7 +5,7 @@ let schemaReady: Promise<D1Database> | undefined;
 export function getDb(): D1Database {
   if (!env.DB) {
     throw new Error(
-      "The Pickfilm database is unavailable. Configure the Sites D1 binding `DB`.",
+      "The DRAWN database is unavailable. Configure the Sites D1 binding `DB`.",
     );
   }
   return env.DB;

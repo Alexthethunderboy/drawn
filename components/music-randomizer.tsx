@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWatchlist } from "@/components/app-providers";
+import { DrawReady, DrawRitual } from "@/components/draw-ritual";
 import { SiteHeader } from "@/components/site-header";
+import { waitForDrawMoment } from "@/lib/draw";
 import { MUSIC_SOURCES, getMusicSource } from "@/lib/music/config";
 import type {
   MusicRollResponse,
@@ -39,7 +41,7 @@ function TrackArtwork({ item }: { item: TrackItem }) {
     return (
       <img
         src={item.artworkUrl}
-        alt={`${item.title} ${item.mediaType === "album" ? "album" : "track"} cover`}
+        alt={`${item.title} ${item.mediaType === "album" ? "album" : "single"} cover`}
         width={640}
         height={640}
         className="absolute inset-0 size-full object-cover"
@@ -52,24 +54,6 @@ function TrackArtwork({ item }: { item: TrackItem }) {
     <div className="music-art-fallback absolute inset-0 grid place-items-center">
       <div className="music-record" aria-label="Cover art unavailable">
         <span />
-      </div>
-    </div>
-  );
-}
-
-function MusicLoadingCard() {
-  return (
-    <div className="pf-feature-card grid overflow-hidden lg:grid-cols-[minmax(20rem,0.9fr)_1.1fr]">
-      <div className="poster-skeleton aspect-square min-h-80 lg:min-h-[42rem]" />
-      <div className="flex min-h-[34rem] flex-col p-7 sm:p-10 lg:p-12">
-        <div className="loading-line mb-10 h-4 w-32" />
-        <div className="loading-line mb-3 h-14 w-5/6" />
-        <div className="loading-line mb-10 h-8 w-1/2" />
-        <div className="flex gap-2">
-          <div className="loading-line h-8 w-28" />
-          <div className="loading-line h-8 w-24" />
-        </div>
-        <div className="loading-line mt-auto h-12 w-44" />
       </div>
     </div>
   );
@@ -97,7 +81,7 @@ function MusicError({
           onClick={retry}
           className="pf-button pf-button-music mt-7"
         >
-          Try another spin
+          Try another draw
         </button>
       </div>
     </div>
@@ -121,6 +105,7 @@ function MusicResult({
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const saved = isSaved(item.mediaKey);
+  const mediaTypeLabel = item.mediaType === "album" ? "Album" : "Single";
 
   useEffect(() => setSaveMessage(""), [item.mediaKey]);
 
@@ -155,7 +140,7 @@ function MusicResult({
   ].filter(Boolean);
 
   return (
-    <article className="pf-feature-card relative overflow-hidden">
+    <article className="pf-draw-reveal pf-feature-card relative overflow-hidden">
       {item.artworkUrl && (
         <img
           src={item.artworkUrl}
@@ -165,22 +150,25 @@ function MusicResult({
       )}
       <div className="pf-feature-wash absolute inset-0" />
 
-      <div className="relative grid lg:grid-cols-[minmax(20rem,0.9fr)_1.1fr]">
-        <div className="relative aspect-square min-h-80 overflow-hidden bg-black lg:aspect-auto lg:min-h-[42rem]">
+      <div className="relative grid md:grid-cols-[minmax(18rem,0.9fr)_1.1fr]">
+        <div className="relative aspect-square min-h-80 overflow-hidden bg-black md:aspect-auto md:min-h-[42rem]">
           <TrackArtwork item={item} />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-5">
-            <span className="pf-source-chip pf-source-chip-music">
-              {item.sourceLabel}
-            </span>
+            <div className="flex flex-wrap gap-2">
+              <span className="pf-source-chip pf-source-chip-music">
+                {item.sourceLabel}
+              </span>
+              <span className="pf-media-kind">{mediaTypeLabel}</span>
+            </div>
             {item.rank && <span className="pf-rank">Chart #{item.rank}</span>}
           </div>
         </div>
 
         <div className="flex min-w-0 flex-col p-7 sm:p-10 lg:p-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="pf-kicker text-[var(--coral)]">Your next listen</p>
+            <p className="pf-kicker text-[var(--coral)]">Your music draw</p>
             <p className="pf-kicker text-white/30">
-              {poolSize} tracks · {artistPoolSize} artists
+              {poolSize} picks · {artistPoolSize} artists
             </p>
           </div>
 
@@ -252,7 +240,7 @@ function MusicResult({
                 className="pf-button pf-button-music"
               >
                 <span aria-hidden="true">↻</span>
-                {loading ? "Finding another…" : "Spin something else"}
+                {loading ? "Drawing another…" : "Draw something else"}
               </button>
               <button
                 type="button"
@@ -265,7 +253,7 @@ function MusicResult({
                   ? "Saved"
                   : saving
                     ? "Saving…"
-                    : `Save ${item.mediaType}`}
+                    : `Save ${mediaTypeLabel.toLowerCase()}`}
               </button>
             </div>
 
@@ -323,12 +311,11 @@ function MusicResult({
 }
 
 export function MusicRandomizer() {
-  const [source, setSource] =
-    useState<MusicSourceId>("rolling-stone-500");
+  const [source, setSource] = useState<MusicSourceId>("all");
   const [item, setItem] = useState<TrackItem | null>(null);
   const [poolSize, setPoolSize] = useState(0);
   const [artistPoolSize, setArtistPoolSize] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
   const recentTracksRef = useRef<string[]>([]);
@@ -337,6 +324,7 @@ export function MusicRandomizer() {
   const roll = useCallback(async () => {
     requestRef.current?.abort();
     const controller = new AbortController();
+    const startedAt = performance.now();
     requestRef.current = controller;
     setLoading(true);
     setError("");
@@ -357,6 +345,7 @@ export function MusicRandomizer() {
       if (!response.ok) {
         throw new Error(payload.error ?? "This music chart could not be loaded.");
       }
+      await waitForDrawMoment(startedAt, controller.signal);
       setItem(payload.item);
       setPoolSize(payload.poolSize);
       setArtistPoolSize(payload.artistPoolSize);
@@ -388,11 +377,20 @@ export function MusicRandomizer() {
   }, [source]);
 
   useEffect(() => {
-    roll();
     return () => requestRef.current?.abort();
-  }, [roll]);
+  }, []);
+
+  function chooseSource(nextSource: MusicSourceId) {
+    requestRef.current?.abort();
+    requestRef.current = null;
+    setLoading(false);
+    setError("");
+    setItem(null);
+    setSource(nextSource);
+  }
 
   const selectedSource = getMusicSource(source);
+  const selectionLabel = selectedSource.label;
 
   return (
     <main className="pf-page pf-page-music min-h-screen">
@@ -406,7 +404,7 @@ export function MusicRandomizer() {
               Worldwide music canon
             </p>
             <h1 className="display-serif mt-4 max-w-4xl text-[clamp(3.3rem,8vw,7rem)] font-bold leading-[0.82] tracking-[-0.06em] text-white">
-              Find the track
+              Find the record
               <br />
               <em className="font-normal text-white/45">you won’t skip.</em>
             </h1>
@@ -422,7 +420,7 @@ export function MusicRandomizer() {
               <select
                 value={source}
                 onChange={(event) =>
-                  setSource(event.target.value as MusicSourceId)
+                  chooseSource(event.target.value as MusicSourceId)
                 }
               >
                 {MUSIC_SOURCES.map((candidate) => (
@@ -439,19 +437,31 @@ export function MusicRandomizer() {
         </div>
 
         <div aria-live="polite" aria-busy={loading}>
-          {loading && !item ? (
-            <MusicLoadingCard />
+          {loading ? (
+            <DrawRitual
+              tone="music"
+              shape="square"
+              selectionLabel={selectionLabel}
+            />
           ) : error && !item ? (
             <MusicError message={error} retry={roll} />
           ) : item ? (
             <MusicResult
+              key={item.mediaKey}
               item={item}
               poolSize={poolSize}
               artistPoolSize={artistPoolSize}
               loading={loading}
               roll={roll}
             />
-          ) : null}
+          ) : (
+            <DrawReady
+              tone="music"
+              shape="square"
+              selectionLabel={selectionLabel}
+              onDraw={roll}
+            />
+          )}
         </div>
 
         {error && item && (
