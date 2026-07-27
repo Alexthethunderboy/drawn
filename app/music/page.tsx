@@ -4,7 +4,7 @@ import { MusicRandomizer } from "@/components/music-randomizer";
 export const metadata: Metadata = {
   title: "Pickfilm Music — Find your next repeat",
   description:
-    "Randomize across ListenBrainz, Last.fm, and Apple Music charts.",
+    "Randomize across ListenBrainz, Last.fm, and Apple Music charts, with Spotify track matching.",
 };
 
 export default function MusicPage() {

@@ -28,6 +28,8 @@ export interface TrackExternalIds {
   releaseMbid?: string;
   lastfmUrl?: string;
   appleMusicId?: string;
+  spotifyTrackId?: string;
+  isrc?: string;
 }
 
 export interface TrackItem {
@@ -40,6 +42,7 @@ export interface TrackItem {
   previewUrl?: string;
   externalUrl?: string;
   appleMusicUrl?: string;
+  spotifyUrl?: string;
   durationMs?: number;
   genres: string[];
   stats: TrackStats;

@@ -121,6 +121,13 @@ deduplication. The no-key iTunes Search API enriches only the selected song
 with artwork, duration, Apple Music links, and a stream-only preview; it is
 never treated as a chart.
 
+When `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` are configured, the
+server also matches each selected chart track against Spotify and adds its
+canonical album metadata and “Open in Spotify” link. `SPOTIFY_MARKET` defaults
+to `US`. Spotify is enrichment rather than a chart source because the current
+Development Mode Web API does not expose a public global chart or the contents
+of Spotify-owned playlists.
+
 For existing Supabase projects, apply
 [`supabase/migrations/202607250002_extend_watchlist_for_music.sql`](supabase/migrations/202607250002_extend_watchlist_for_music.sql)
 so saved tracks are accepted by the watchlist constraints.
@@ -131,3 +138,5 @@ Music references:
 - [Last.fm global top tracks](https://www.last.fm/api/show/chart.getTopTracks)
 - [Apple Music catalog charts](https://developer.apple.com/documentation/applemusicapi/charts)
 - [iTunes Search API](https://performance-partners.apple.com/search-api)
+- [Spotify Client Credentials flow](https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow)
+- [Spotify Search endpoint](https://developer.spotify.com/documentation/web-api/reference/search)

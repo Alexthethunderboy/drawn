@@ -1,4 +1,5 @@
 import { fetchJson, finiteNumber, nonEmptyString } from "@/lib/media/http";
+import { enrichTrackWithSpotify } from "@/lib/music/providers/spotify";
 import type { TrackItem } from "@/lib/music/types";
 
 interface ItunesTrack {
@@ -57,7 +58,7 @@ function bestMatch(
  * Enriching just the selected song keeps requests beneath Apple's documented
  * rate guidance and gives no-key charts artwork and legal preview links.
  */
-export async function enrichTrack(item: TrackItem): Promise<TrackItem> {
+async function enrichTrackWithItunes(item: TrackItem): Promise<TrackItem> {
   if (item.artworkUrl && item.previewUrl && item.appleMusicUrl) return item;
 
   try {
@@ -101,4 +102,9 @@ export async function enrichTrack(item: TrackItem): Promise<TrackItem> {
   } catch {
     return item;
   }
+}
+
+export async function enrichTrack(item: TrackItem): Promise<TrackItem> {
+  const spotifyItem = await enrichTrackWithSpotify(item);
+  return enrichTrackWithItunes(spotifyItem);
 }

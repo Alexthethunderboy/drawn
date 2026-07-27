@@ -280,6 +280,16 @@ function MusicResult({
                 Apple Music ↗
               </a>
             )}
+            {item.spotifyUrl && (
+              <a
+                href={item.spotifyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] font-black uppercase tracking-[0.13em] text-[#1ed760] hover:text-white"
+              >
+                Spotify ↗
+              </a>
+            )}
           </div>
         </div>
         {saveMessage && (
@@ -446,7 +456,7 @@ export function MusicRandomizer() {
 
         <footer className="mt-8 flex flex-col gap-3 border-t border-white/10 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/25 sm:flex-row sm:justify-between">
           <p>ListenBrainz works without a key · Every spin is server-randomized</p>
-          <p>Apple previews link back to Apple Music</p>
+          <p>Spotify and Apple links open the matched track</p>
         </footer>
       </section>
     </main>
