@@ -47,6 +47,6 @@ export function clearLegacyWatchlist(): void {
   try {
     window.localStorage.removeItem(LEGACY_WATCHLIST_STORAGE_KEY);
   } catch {
-    // The migration is best-effort; server-backed saves still work.
+    // The migration is best-effort; the profile remains usable without it.
   }
 }

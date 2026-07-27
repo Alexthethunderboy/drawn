@@ -8,7 +8,15 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { AuthResponse, AuthUser } from "@/lib/auth/types";
+import type { AuthUser } from "@/lib/auth/types";
+import {
+  loginLocalProfile,
+  logoutLocalProfile,
+  readLocalProfileEntries,
+  readLocalSession,
+  registerLocalProfile,
+  writeLocalProfileEntries,
+} from "@/lib/profile/local";
 import {
   clearLegacyWatchlist,
   readLegacyWatchlist,
@@ -38,84 +46,25 @@ interface WatchlistContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
 
-async function readError(response: Response, fallback: string): Promise<string> {
-  try {
-    const body = (await response.json()) as { error?: string };
-    return body.error ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/auth/session", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(
-            await readError(response, "Could not load the current profile."),
-          );
-        }
-        return (await response.json()) as AuthResponse;
-      })
-      .then((body) => setUser(body.user))
-      .catch((error) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          console.error(error);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
+    setUser(readLocalSession());
+    setLoading(false);
   }, []);
 
-  const submitCredentials = useCallback(
-    async (mode: "login" | "register", username: string, pin: string) => {
-      const response = await fetch(`/api/auth/${mode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, pin }),
-      });
-      if (!response.ok) {
-        throw new Error(
-          await readError(
-            response,
-            mode === "login"
-              ? "Could not sign in."
-              : "Could not create the profile.",
-          ),
-        );
-      }
-      const body = (await response.json()) as AuthResponse;
-      if (!body.user) throw new Error("The profile response was incomplete.");
-      setUser(body.user);
-    },
-    [],
-  );
+  const login = useCallback(async (username: string, pin: string) => {
+    setUser(await loginLocalProfile(username, pin));
+  }, []);
 
-  const login = useCallback(
-    (username: string, pin: string) =>
-      submitCredentials("login", username, pin),
-    [submitCredentials],
-  );
-  const register = useCallback(
-    (username: string, pin: string) =>
-      submitCredentials("register", username, pin),
-    [submitCredentials],
-  );
+  const register = useCallback(async (username: string, pin: string) => {
+    setUser(await registerLocalProfile(username, pin));
+  }, []);
+
   const logout = useCallback(async () => {
-    const response = await fetch("/api/auth/logout", { method: "POST" });
-    if (!response.ok) {
-      throw new Error(await readError(response, "Could not sign out."));
-    }
+    logoutLocalProfile();
     setUser(null);
   }, []);
 
@@ -139,69 +88,36 @@ function WatchlistProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const controller = new AbortController();
     setLoading(true);
+    const localEntries = readLocalProfileEntries(user.id);
+    const legacyEntries = readLegacyWatchlist();
+    const merged = [...legacyEntries, ...localEntries].filter(
+      (entry, index, all) =>
+        all.findIndex(
+          (candidate) => candidate.item.mediaKey === entry.item.mediaKey,
+        ) === index,
+    );
 
-    async function load() {
-      const legacyEntries = readLegacyWatchlist();
-      if (legacyEntries.length > 0) {
-        const migrated = await Promise.all(
-          legacyEntries.map(({ item }) =>
-            fetch("/api/watchlist", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ item }),
-              signal: controller.signal,
-            }),
-          ),
-        );
-        if (migrated.every((response) => response.ok)) {
-          clearLegacyWatchlist();
-        }
-      }
-
-      const response = await fetch("/api/watchlist", {
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        throw new Error(await readError(response, "Could not load saved picks."));
-      }
-      const body = (await response.json()) as { entries?: WatchlistEntry[] };
-      setEntries(body.entries ?? []);
+    if (legacyEntries.length > 0) {
+      writeLocalProfileEntries(user.id, merged);
+      clearLegacyWatchlist();
     }
-
-    load()
-      .catch((error) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          console.error(error);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
+    setEntries(merged);
+    setLoading(false);
   }, [authLoading, user]);
 
   const save = useCallback(
     async (item: WatchlistItem) => {
       if (!user) throw new Error("Sign in with a username and PIN first.");
-      const response = await fetch("/api/watchlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item }),
-      });
-      if (!response.ok) {
-        throw new Error(await readError(response, "Could not save this pick."));
-      }
-      const body = (await response.json()) as { entry?: WatchlistEntry };
-      if (!body.entry) throw new Error("The saved pick response was incomplete.");
-      setEntries((current) => [
-        body.entry!,
-        ...current.filter(
-          (entry) => entry.item.mediaKey !== body.entry!.item.mediaKey,
+      const entry = { item, savedAt: new Date().toISOString() };
+      const nextEntries = [
+        entry,
+        ...readLocalProfileEntries(user.id).filter(
+          (candidate) => candidate.item.mediaKey !== item.mediaKey,
         ),
-      ]);
+      ];
+      writeLocalProfileEntries(user.id, nextEntries);
+      setEntries(nextEntries);
     },
     [user],
   );
@@ -209,27 +125,18 @@ function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const remove = useCallback(
     async (mediaKey: string) => {
       if (!user) return;
-      const response = await fetch("/api/watchlist", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaKey }),
-      });
-      if (!response.ok) {
-        throw new Error(await readError(response, "Could not remove this pick."));
-      }
-      setEntries((current) =>
-        current.filter((entry) => entry.item.mediaKey !== mediaKey),
+      const nextEntries = readLocalProfileEntries(user.id).filter(
+        (entry) => entry.item.mediaKey !== mediaKey,
       );
+      writeLocalProfileEntries(user.id, nextEntries);
+      setEntries(nextEntries);
     },
     [user],
   );
 
   const clear = useCallback(async () => {
     if (!user) return;
-    const response = await fetch("/api/watchlist", { method: "DELETE" });
-    if (!response.ok) {
-      throw new Error(await readError(response, "Could not clear saved picks."));
-    }
+    writeLocalProfileEntries(user.id, []);
     setEntries([]);
   }, [user]);
 

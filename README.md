@@ -64,18 +64,17 @@ All provider secrets stay server-side.
 
 ## Username/PIN profiles
 
-DRAWN uses a small Cloudflare D1 database rather than Supabase. A visitor can
-create a username with a 4–8 digit PIN, sign in on another device, and access
-the same saved movies, shows, anime, documentaries, and tracks. PINs are salted
-and PBKDF2-hashed before storage; sessions use an HTTP-only, same-site cookie.
-Five incorrect PIN attempts lock sign-in for 15 minutes.
+DRAWN keeps lightweight profiles and saved picks in the browser rather than
+using Supabase or another hosted database. A visitor can create a username with
+a 4–8 digit PIN and keep separate saved lists on that device. PINs are salted
+and PBKDF2-hashed before local storage. Five incorrect attempts lock sign-in for
+15 minutes.
 
 There is intentionally no email collection or recovery flow. This lightweight
 profile system is appropriate for a media watchlist, not sensitive personal
-data. Usernames and lost PINs cannot currently be recovered.
+data. Profiles do not sync between browsers or devices, and clearing site data
+removes them permanently.
 
-The D1 schema lives in `db/schema.ts`, with generated migrations in `drizzle/`.
-Runtime initialization also creates missing tables for local development.
 Existing browser-local saves from `pickfilm.watchlist.v1` are migrated into the
 first profile used in that browser.
 
@@ -103,19 +102,14 @@ npm test
 npm run build
 ```
 
-`npm run dev` uses Vinext so the local D1 binding is available.
 GitHub Actions runs the same checks for pull requests and pushes to `main`.
 
 ## Deployment
 
-The repository is configured for OpenAI Sites through
-`.openai/hosting.json`. Sites supplies the Cloudflare D1 binding named `DB`;
-provider credentials from `.env.example` must be configured as hosted runtime
-values and must not be committed. The production artifact is created with:
-
-```bash
-npm run build:sites
-```
+The application uses the native Next.js build and is connected to Vercel
+through the `main` branch. Add any optional provider credentials from
+`.env.example` to the Vercel project’s Development, Preview, and Production
+environments; never commit their values.
 
 ## Provider references
 

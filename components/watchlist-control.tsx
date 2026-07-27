@@ -196,8 +196,8 @@ export function WatchlistControl({
                   dark ? "text-white/45" : "text-black/50"
                 }`}
               >
-                Your saved picks follow this username. There is no email or PIN
-                recovery, so choose something memorable.
+                This profile and its saved picks stay on this device. There is
+                no email or PIN recovery, so choose something memorable.
               </p>
 
               <label
