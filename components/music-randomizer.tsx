@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useWatchlist } from "@/components/app-providers";
 import { DrawReady, DrawRitual } from "@/components/draw-ritual";
 import { SiteHeader } from "@/components/site-header";
+import { ChartSheet } from "@/components/chart-sheet";
 import { waitForDrawMoment } from "@/lib/draw";
 import { MUSIC_SOURCES, getMusicSource } from "@/lib/music/config";
 import type {
+  MusicMediaType,
   MusicRollResponse,
   MusicSourceId,
   TrackItem,
@@ -67,12 +69,12 @@ function MusicError({
   retry: () => void;
 }) {
   return (
-    <div className="pf-feature-card grid min-h-[34rem] place-items-center p-8 text-center">
+    <div className="pf-feature-card grid min-h-[28rem] place-items-center p-8 text-center">
       <div className="max-w-md">
         <span className="mx-auto grid size-14 place-items-center rounded-full border border-white/15 bg-white/5 text-2xl text-[var(--coral)]">
           ♪
         </span>
-        <h2 className="display-serif mt-6 text-4xl font-bold text-white">
+        <h2 className="display-serif mt-6 text-3xl sm:text-4xl font-bold text-white">
           The chart went quiet.
         </h2>
         <p className="mt-3 text-sm leading-7 text-white/50">{message}</p>
@@ -150,37 +152,66 @@ function MusicResult({
       )}
       <div className="pf-feature-wash absolute inset-0" />
 
-      <div className="relative grid md:grid-cols-[minmax(18rem,0.9fr)_1.1fr]">
-        <div className="relative aspect-square min-h-80 overflow-hidden bg-black md:aspect-auto md:min-h-[42rem]">
-          <TrackArtwork item={item} />
-          <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-5">
-            <div className="flex flex-wrap gap-2">
-              <span className="pf-source-chip pf-source-chip-music">
+      {/* Responsive layout: Compact top header on mobile, 2-column on desktop */}
+      <div className="relative grid md:grid-cols-[minmax(18rem,24rem)_1fr]">
+        
+        {/* Mobile Header Banner */}
+        <div className="md:hidden flex items-start gap-4 p-5 border-b border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="relative size-24 shrink-0 aspect-square overflow-hidden rounded-md border border-white/15 bg-[#11130f] shadow-lg">
+            <TrackArtwork item={item} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="pf-source-chip pf-source-chip-music text-[9px] px-2 py-0.5">
                 {item.sourceLabel}
               </span>
-              <span className="pf-media-kind">{mediaTypeLabel}</span>
+              {item.rank && <span className="pf-rank text-[9px] px-2 py-0.5">#{item.rank}</span>}
             </div>
-            {item.rank && <span className="pf-rank">Chart #{item.rank}</span>}
+            <h2 className="display-serif mt-1.5 text-2xl font-bold leading-tight text-white truncate">
+              {item.title}
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--coral)] font-bold truncate">
+              {item.artist}
+            </p>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col p-7 sm:p-10 lg:p-12">
+        {/* Desktop Artwork Showcase */}
+        <div className="hidden md:block relative aspect-square overflow-hidden bg-[#11130f] md:aspect-auto md:min-h-[43rem]">
+          <TrackArtwork item={item} />
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
+            <span className="pf-source-chip pf-source-chip-music">
+              {item.sourceLabel}
+            </span>
+            <span className="pf-media-kind">{mediaTypeLabel}</span>
+          </div>
+          {item.rank && (
+            <div className="absolute bottom-4 left-4">
+              <span className="pf-rank">Chart #{item.rank}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Content Details */}
+        <div className="flex min-w-0 flex-col p-5 sm:p-8 lg:p-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="pf-kicker text-[var(--coral)]">Your music draw</p>
-            <p className="pf-kicker text-white/30">
-              {poolSize} picks · {artistPoolSize} artists
+            <p className="pf-kicker text-[var(--coral)]">
+              Music draw · {mediaTypeLabel}
+            </p>
+            <p className="pf-kicker text-white/40">
+              Drawn from {poolSize} records ({artistPoolSize} artists)
             </p>
           </div>
 
-          <h2 className="display-serif mt-7 max-w-[15ch] text-[clamp(3rem,7vw,5.7rem)] font-bold leading-[0.86] tracking-[-0.055em] text-white">
-            {item.title}
-          </h2>
-          <p className="mt-4 text-xl font-semibold text-[var(--coral)]">
+          <p className="mt-4 text-xs font-black uppercase tracking-[0.18em] text-[var(--coral)]">
             {item.artist}
           </p>
+          <h2 className="hidden md:block display-serif mt-2 max-w-[16ch] text-[clamp(2.5rem,6vw,5rem)] font-bold leading-[0.9] tracking-[-0.05em] text-white">
+            {item.title}
+          </h2>
 
           {trackFacts.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold uppercase tracking-[0.13em] text-white/48">
+            <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-white/50">
               {trackFacts.map((fact) => (
                 <span key={String(fact)} className="pf-fact">
                   {fact}
@@ -190,48 +221,29 @@ function MusicResult({
           )}
 
           {statFacts.length > 0 && (
-            <div className="mt-7 flex flex-wrap gap-2">
-              {statFacts.map((fact) => (
-                <span key={String(fact)} className="pf-stat">
-                  {fact}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {statFacts.map((stat, idx) => (
+                <span key={`${stat}-${idx}`} className="pf-stat">
+                  {stat}
                 </span>
               ))}
             </div>
           )}
 
-          {item.mediaType === "track" && item.previewUrl ? (
-            <div className="pf-audio mt-9">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="pf-kicker text-white/40">Listen before you commit</p>
-                <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/25">
-                  iTunes preview
-                </p>
-              </div>
-              <audio
-                key={item.previewUrl}
-                controls
-                preload="none"
-                src={item.previewUrl}
-                className="h-10 w-full"
-              >
-                Your browser does not support audio previews.
-              </audio>
-            </div>
-          ) : (
-            <div className="music-wave mt-10" aria-hidden="true">
-              {Array.from({ length: 42 }, (_, index) => (
-                <span
-                  key={index}
-                  style={{
-                    height: `${12 + ((index * 17) % 52)}px`,
-                    opacity: 0.25 + (index % 5) * 0.12,
-                  }}
-                />
-              ))}
+          {item.previewUrl && (
+            <div className="pf-audio mt-6">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                30-Second Audio Preview
+              </p>
+              <audio controls src={item.previewUrl} className="w-full" />
             </div>
           )}
 
-          <div className="mt-auto pt-9">
+          <p className="mt-6 max-w-3xl text-sm leading-relaxed sm:text-base sm:leading-relaxed text-white/75">
+            {item.synopsis}
+          </p>
+
+          <div className="mt-auto pt-6">
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
@@ -249,35 +261,8 @@ function MusicResult({
                 className="pf-button pf-button-secondary"
               >
                 <span aria-hidden="true">{saved ? "◆" : "◇"}</span>
-                {saved
-                  ? "Saved"
-                  : saving
-                    ? "Saving…"
-                    : `Save ${mediaTypeLabel.toLowerCase()}`}
+                {saved ? "Saved" : saving ? "Saving…" : "Save pick"}
               </button>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3">
-              {item.spotifyUrl && (
-                <a
-                  href={item.spotifyUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pf-text-link text-[#1ed760]"
-                >
-                  Open in Spotify ↗
-                </a>
-              )}
-              {item.appleMusicUrl && (
-                <a
-                  href={item.appleMusicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pf-text-link"
-                >
-                  Open in Apple Music ↗
-                </a>
-              )}
               {item.externalUrl && (
                 <a
                   href={item.externalUrl}
@@ -285,14 +270,14 @@ function MusicResult({
                   rel="noreferrer"
                   className="pf-text-link"
                 >
-                  Chart source ↗
+                  Listen on Apple Music ↗
                 </a>
               )}
             </div>
 
             {saveMessage && (
               <p
-                className={`mt-4 text-xs ${
+                className={`mt-3 text-xs ${
                   saved ? "text-[var(--coral)]" : "text-[var(--danger)]"
                 }`}
                 role="status"
@@ -300,7 +285,8 @@ function MusicResult({
                 {saveMessage}
               </p>
             )}
-            <p className="mt-6 max-w-3xl border-l border-[var(--coral)]/60 pl-3 text-[10px] leading-5 text-white/35">
+
+            <p className="mt-5 max-w-3xl border-l border-[var(--coral)]/60 pl-3 text-[10px] leading-relaxed text-white/40">
               {item.sourceNote}
             </p>
           </div>
@@ -310,141 +296,188 @@ function MusicResult({
   );
 }
 
+const MEDIA_TYPE_PILLS: { id: MusicMediaType; label: string; icon: string }[] = [
+  { id: "all",   label: "All",    icon: "✦" },
+  { id: "album", label: "Albums", icon: "💿" },
+  { id: "track", label: "Tracks", icon: "🎵" },
+];
+
+function mediaTypeLabel(t: MusicMediaType) {
+  return t === "album" ? "Album" : t === "track" ? "Track" : "Music";
+}
+
 export function MusicRandomizer() {
   const [source, setSource] = useState<MusicSourceId>("all");
+  const [mediaType, setMediaType] = useState<MusicMediaType>("all");
   const [item, setItem] = useState<TrackItem | null>(null);
   const [poolSize, setPoolSize] = useState(0);
   const [artistPoolSize, setArtistPoolSize] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [chartSheetOpen, setChartSheetOpen] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
-  const recentTracksRef = useRef<string[]>([]);
-  const recentArtistsRef = useRef<string[]>([]);
 
-  const roll = useCallback(async () => {
-    requestRef.current?.abort();
-    const controller = new AbortController();
-    const startedAt = performance.now();
-    requestRef.current = controller;
-    setLoading(true);
-    setError("");
+  const selectedSource = getMusicSource(source);
 
-    try {
-      const searchParams = new URLSearchParams({ source });
-      recentTracksRef.current.forEach((mediaKey) =>
-        searchParams.append("exclude", mediaKey),
-      );
-      recentArtistsRef.current.forEach((artist) =>
-        searchParams.append("excludeArtist", artist),
-      );
-      const response = await fetch(
-        `/api/music/roll?${searchParams}`,
-        { signal: controller.signal, cache: "no-store" },
-      );
-      const payload = (await response.json()) as MusicRollResponse & ApiError;
-      if (!response.ok) {
-        throw new Error(payload.error ?? "This music chart could not be loaded.");
+  const roll = useCallback(
+    async (nextSource = source, nextMediaType = mediaType) => {
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      const startedAt = performance.now();
+      requestRef.current = controller;
+      setLoading(true);
+      setError("");
+
+      try {
+        const url = `/api/music/roll?source=${encodeURIComponent(nextSource)}&mediaType=${encodeURIComponent(nextMediaType)}`;
+        const response = await fetch(url, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as MusicRollResponse & ApiError;
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? "This music chart could not be loaded.");
+        }
+
+        await waitForDrawMoment(startedAt, controller.signal);
+        setItem(payload.item);
+        setPoolSize(payload.poolSize);
+        setArtistPoolSize(payload.artistPoolSize);
+      } catch (caught) {
+        if (caught instanceof DOMException && caught.name === "AbortError") return;
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "This music chart could not be loaded.",
+        );
+      } finally {
+        if (requestRef.current === controller) setLoading(false);
       }
-      await waitForDrawMoment(startedAt, controller.signal);
-      setItem(payload.item);
-      setPoolSize(payload.poolSize);
-      setArtistPoolSize(payload.artistPoolSize);
-      recentTracksRef.current = [
-        payload.item.mediaKey,
-        ...recentTracksRef.current.filter(
-          (mediaKey) => mediaKey !== payload.item.mediaKey,
-        ),
-      ].slice(0, 10);
-      recentArtistsRef.current = [
-        payload.item.artist,
-        ...recentArtistsRef.current.filter(
-          (artist) =>
-            artist.localeCompare(payload.item.artist, undefined, {
-              sensitivity: "base",
-            }) !== 0,
-        ),
-      ].slice(0, 5);
-    } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") return;
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "This music chart could not be loaded.",
-      );
-    } finally {
-      if (requestRef.current === controller) setLoading(false);
-    }
-  }, [source]);
+    },
+    [source, mediaType],
+  );
 
   useEffect(() => {
     return () => requestRef.current?.abort();
   }, []);
 
-  function chooseSource(nextSource: MusicSourceId) {
+  function resetDraw() {
     requestRef.current?.abort();
     requestRef.current = null;
     setLoading(false);
     setError("");
     setItem(null);
+  }
+
+  function chooseSource(nextSource: MusicSourceId) {
+    resetDraw();
     setSource(nextSource);
   }
 
-  const selectedSource = getMusicSource(source);
-  const selectionLabel = selectedSource.label;
+  function chooseMediaType(next: MusicMediaType) {
+    resetDraw();
+    setMediaType(next);
+  }
 
   return (
-    <main className="pf-page pf-page-music min-h-screen">
+    <main className="pf-page pf-page-music min-h-screen pb-24 sm:pb-12">
       <div className="grain" />
       <SiteHeader current="music" />
 
-      <section className="pf-container pb-12 pt-10 sm:pt-14">
-        <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_minmax(22rem,32rem)] lg:items-end">
+      <section className="pf-container pb-12 pt-6 sm:pt-12">
+        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_minmax(22rem,32rem)] lg:items-end">
           <div>
             <p className="pf-kicker text-[var(--coral)]">
-              Worldwide music canon
+              Global music rankings
             </p>
-            <h1 className="display-serif mt-4 max-w-4xl text-[clamp(3.3rem,8vw,7rem)] font-bold leading-[0.82] tracking-[-0.06em] text-white">
-              Find the record
+            <h1 className="display-serif mt-3 max-w-4xl text-[clamp(2.5rem,7vw,6.5rem)] font-bold leading-[0.85] tracking-[-0.05em] text-white">
+              Draw your next
               <br />
-              <em className="font-normal text-white/45">you won’t skip.</em>
+              <em className="font-normal text-white/45">listening session.</em>
             </h1>
-            <p className="mt-6 max-w-xl text-sm leading-7 text-white/48 sm:text-base">
-              A single global pick from ranked songs and albums, enriched with
-              cover art and direct listening links.
+            <p className="mt-4 max-w-xl text-xs sm:text-sm leading-relaxed text-white/50">
+              One standout album or track chosen from global charts, classics,
+              and viral favorites.
             </p>
           </div>
 
-          <div className="pf-picker pf-picker-music">
-            <label className="pf-field">
-              <span>Choose a chart period</span>
-              <select
-                value={source}
-                onChange={(event) =>
-                  chooseSource(event.target.value as MusicSourceId)
-                }
+          {/* Right control column: media-type pills + chart picker */}
+          <div className="flex flex-col gap-3">
+            {/* ── Media-type segmented pills ── */}
+            <div>
+              <span className="pf-field-label">Media Type</span>
+              <div
+                role="group"
+                aria-label="Media type"
+                className="mt-2 inline-flex w-full rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-1 gap-1"
               >
-                {MUSIC_SOURCES.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.label}
-                  </option>
+                {MEDIA_TYPE_PILLS.map((pill) => (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    aria-pressed={mediaType === pill.id}
+                    onClick={() => chooseMediaType(pill.id)}
+                    className={
+                      `flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold tracking-wide transition-all duration-200 ` +
+                      (mediaType === pill.id
+                        ? "bg-[var(--coral)] text-black shadow-lg shadow-[var(--coral)]/30 scale-[1.03]"
+                        : "text-white/50 hover:text-white hover:bg-white/10")
+                    }
+                  >
+                    <span aria-hidden="true">{pill.icon}</span>
+                    {pill.label}
+                  </button>
                 ))}
-              </select>
-            </label>
-            <p className="mt-4 text-xs leading-5 text-white/38">
-              {selectedSource.description}
-            </p>
+              </div>
+            </div>
+
+            {/* ── Chart source picker ── */}
+            <div className="pf-picker pf-picker-music">
+              <span className="pf-field-label">Chart Source</span>
+              <button
+                type="button"
+                onClick={() => setChartSheetOpen(true)}
+                className="mt-2 w-full flex items-center justify-between p-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition text-left"
+              >
+                <div>
+                  <p className="text-xs font-bold text-white uppercase tracking-wider">
+                    {selectedSource.label}
+                  </p>
+                  <p className="text-[11px] text-white/50 truncate max-w-xs sm:max-w-sm mt-0.5">
+                    {selectedSource.description}
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[var(--coral)] px-2.5 py-1 rounded-full border border-[var(--coral)]/30 bg-[var(--coral)]/10">
+                  Change ▾
+                </span>
+              </button>
+            </div>
           </div>
         </div>
+
+        <ChartSheet
+          isOpen={chartSheetOpen}
+          onClose={() => setChartSheetOpen(false)}
+          title="Music Charts"
+          options={MUSIC_SOURCES.map((s) => ({
+            id: s.id,
+            label: s.label,
+            description: s.description,
+          }))}
+          selectedId={source}
+          onSelect={(id) => chooseSource(id as MusicSourceId)}
+        />
 
         <div aria-live="polite" aria-busy={loading}>
           {loading ? (
             <DrawRitual
               tone="music"
-              shape="square"
-              selectionLabel={selectionLabel}
+              mediaSubtype={mediaType}
+              selectionLabel={`${selectedSource.label} · ${mediaTypeLabel(mediaType)}`}
             />
           ) : error && !item ? (
-            <MusicError message={error} retry={roll} />
+            <MusicError message={error} retry={() => roll()} />
           ) : item ? (
             <MusicResult
               key={item.mediaKey}
@@ -452,14 +485,14 @@ export function MusicRandomizer() {
               poolSize={poolSize}
               artistPoolSize={artistPoolSize}
               loading={loading}
-              roll={roll}
+              roll={() => roll()}
             />
           ) : (
             <DrawReady
               tone="music"
-              shape="square"
-              selectionLabel={selectionLabel}
-              onDraw={roll}
+              mediaSubtype={mediaType}
+              selectionLabel={`${selectedSource.label} · ${mediaTypeLabel(mediaType)}`}
+              onDraw={() => roll()}
             />
           )}
         </div>
@@ -470,9 +503,22 @@ export function MusicRandomizer() {
           </p>
         )}
 
+        {/* Sticky Mobile Floating Action Bar */}
+        <div className="sm:hidden fixed bottom-16 inset-x-0 z-30 p-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none flex justify-center">
+          <button
+            type="button"
+            onClick={() => roll()}
+            disabled={loading}
+            className="pointer-events-auto pf-button pf-button-music shadow-2xl px-6 py-3.5 rounded-full text-xs font-black"
+          >
+            <span aria-hidden="true">↻</span>
+            {loading ? "Drawing…" : `Draw ${mediaTypeLabel(mediaType)} Now`}
+          </button>
+        </div>
+
         <footer className="pf-footer">
-          <p>500 ranked albums stored locally · Live charts fail over safely</p>
-          <p>Spotify and Apple links open the matched recording</p>
+          <p>Live music charts · Server-side uniform draw</p>
+          <p>Music data provided via Apple Music & Last.fm API attribution</p>
         </footer>
       </section>
     </main>

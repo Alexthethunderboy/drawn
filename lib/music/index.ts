@@ -91,15 +91,21 @@ async function fetchBlendedTracks(): Promise<TrackItem[]> {
 export async function rollMusic(
   source: MusicSourceId,
   exclusions: MusicRollExclusions = {},
+  mediaType: "all" | "album" | "track" = "all",
 ): Promise<MusicRollResponse> {
-  const candidates =
+  const rawCandidates =
     source === "all"
       ? await fetchBlendedTracks()
       : await fetchMusicSourceWithFallback(source);
 
+  const candidates =
+    mediaType === "all"
+      ? rawCandidates
+      : rawCandidates.filter((item) => item.mediaType === mediaType);
+
   if (candidates.length === 0) {
     throw new MediaSourceError(
-      "This music chart returned no songs. Try another chart.",
+      `This music chart has no ${mediaType === "album" ? "albums" : mediaType === "track" ? "singles" : "records"}. Try another format or chart.`,
       404,
       "EMPTY_MUSIC_CHART",
     );

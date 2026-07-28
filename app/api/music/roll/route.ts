@@ -3,6 +3,7 @@ import { MediaSourceError } from "@/lib/media/errors";
 import { rollMusic } from "@/lib/music";
 import {
   MUSIC_SOURCE_IDS,
+  type MusicMediaType,
   type MusicSourceId,
 } from "@/lib/music/types";
 
@@ -40,11 +41,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const rawMediaType = request.nextUrl.searchParams.get("mediaType") ?? "all";
+  const mediaType: MusicMediaType =
+    rawMediaType === "album" || rawMediaType === "track"
+      ? rawMediaType
+      : "all";
+
   try {
-    const result = await rollMusic(source, {
-      mediaKeys: readExclusions(request, "exclude"),
-      artists: readExclusions(request, "excludeArtist"),
-    });
+    const result = await rollMusic(
+      source,
+      {
+        mediaKeys: readExclusions(request, "exclude"),
+        artists: readExclusions(request, "excludeArtist"),
+      },
+      mediaType,
+    );
     return NextResponse.json(result, {
       headers: { "Cache-Control": "no-store" },
     });

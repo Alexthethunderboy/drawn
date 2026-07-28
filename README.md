@@ -109,7 +109,9 @@ GitHub Actions runs the same checks for pull requests and pushes to `main`.
 The application uses the native Next.js build and is connected to Vercel
 through the `main` branch. Add any optional provider credentials from
 `.env.example` to the Vercel project’s Development, Preview, and Production
-environments; never commit their values.
+environments; never commit their values. Canonical metadata uses
+`NEXT_PUBLIC_SITE_URL` when supplied and otherwise falls back to Vercel’s
+production-domain system variable.
 
 ## Provider references
 

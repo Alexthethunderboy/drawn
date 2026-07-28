@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWatchlist } from "@/components/app-providers";
 import { DrawReady, DrawRitual } from "@/components/draw-ritual";
 import { SiteHeader } from "@/components/site-header";
+import { ChartSheet } from "@/components/chart-sheet";
 import { waitForDrawMoment } from "@/lib/draw";
 import {
   CATEGORY_LABELS,
@@ -51,9 +52,9 @@ function PosterArtwork({ item }: { item: MediaItem }) {
   }
 
   return (
-    <div className="pf-poster-fallback absolute inset-0 flex flex-col justify-end p-7">
-      <span className="pf-kicker text-[var(--lime)]">Poster unavailable</span>
-      <p className="display-serif mt-3 max-w-[10ch] text-4xl font-bold leading-[0.9] text-white">
+    <div className="pf-poster-fallback absolute inset-0 flex flex-col justify-end p-5">
+      <span className="pf-kicker text-[var(--lime)] text-[10px]">Poster unavailable</span>
+      <p className="display-serif mt-2 max-w-[10ch] text-2xl font-bold leading-[0.9] text-white">
         {item.title}
       </p>
     </div>
@@ -133,12 +134,12 @@ function EmptyCard({
   onRetry: () => void;
 }) {
   return (
-    <div className="pf-feature-card grid min-h-[34rem] place-items-center p-8 text-center">
+    <div className="pf-feature-card grid min-h-[28rem] place-items-center p-8 text-center">
       <div className="max-w-md">
         <span className="mx-auto grid size-14 place-items-center rounded-full border border-white/15 bg-white/5 text-2xl text-[var(--lime)]">
           ↻
         </span>
-        <h2 className="display-serif mt-6 text-4xl font-bold text-white">
+        <h2 className="display-serif mt-6 text-3xl sm:text-4xl font-bold text-white">
           This chart came up empty.
         </h2>
         <p className="mt-3 text-sm leading-7 text-white/50">{error}</p>
@@ -208,8 +209,30 @@ function ResultCard({
       )}
       <div className="pf-feature-wash absolute inset-0" />
 
+      {/* Responsive layout: Stacked compact header on mobile, 2-column grid on desktop */}
       <div className="relative grid md:grid-cols-[minmax(17rem,21rem)_1fr]">
-        <div className="relative aspect-[2/3] overflow-hidden bg-[#11130f] md:aspect-auto md:min-h-[43rem]">
+        
+        {/* Mobile Header Banner (visible on mobile < 768px) */}
+        <div className="md:hidden flex items-start gap-4 p-5 border-b border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="relative w-24 shrink-0 aspect-[2/3] overflow-hidden rounded-md border border-white/15 bg-[#11130f] shadow-lg">
+            <PosterArtwork item={item} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="pf-source-chip text-[9px] px-2 py-0.5">{item.sourceLabel}</span>
+              {item.rank && <span className="pf-rank text-[9px] px-2 py-0.5">#{item.rank}</span>}
+            </div>
+            <h2 className="display-serif mt-2 text-2xl font-bold leading-tight text-white truncate">
+              {item.title}
+            </h2>
+            <p className="mt-1 text-xs text-[var(--lime)] font-bold">
+              {CATEGORY_LABELS[item.category]} · {item.year}
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop Poster Panel (visible on desktop >= 768px) */}
+        <div className="hidden md:block relative aspect-[2/3] overflow-hidden bg-[#11130f] md:aspect-auto md:min-h-[43rem]">
           <PosterArtwork item={item} />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
             <span className="pf-source-chip">{item.sourceLabel}</span>
@@ -217,27 +240,29 @@ function ResultCard({
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col p-6 sm:p-9 lg:p-12">
+        {/* Content Details */}
+        <div className="flex min-w-0 flex-col p-5 sm:p-8 lg:p-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="pf-kicker text-[var(--lime)]">
               Your draw · {CATEGORY_LABELS[item.category]}
             </p>
-            <p className="pf-kicker text-white/30">
+            <p className="pf-kicker text-white/40">
               Drawn from {poolSize} titles
             </p>
           </div>
 
-          <h2 className="display-serif mt-6 max-w-[16ch] text-[clamp(2.75rem,7vw,5.5rem)] font-bold leading-[0.88] tracking-[-0.05em] text-white">
+          <h2 className="hidden md:block display-serif mt-4 max-w-[16ch] text-[clamp(2.5rem,6vw,5rem)] font-bold leading-[0.9] tracking-[-0.05em] text-white">
             {item.title}
           </h2>
+          
           {item.tagline && (
-            <p className="display-serif mt-4 max-w-2xl text-lg italic leading-7 text-white/52">
+            <p className="display-serif mt-3 max-w-2xl text-base sm:text-lg italic leading-relaxed text-white/60">
               “{item.tagline}”
             </p>
           )}
 
           {facts.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold uppercase tracking-[0.13em] text-white/50">
+            <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-white/50">
               {facts.map((fact) => (
                 <span key={String(fact)} className="pf-fact">
                   {fact}
@@ -246,11 +271,11 @@ function ResultCard({
             </div>
           )}
 
-          <div className="mt-6">
+          <div className="mt-5">
             <RatingBadges item={item} />
           </div>
 
-          <p className="mt-8 max-w-3xl text-[15px] leading-7 text-white/68 sm:text-base sm:leading-8">
+          <p className="mt-6 max-w-3xl text-sm leading-relaxed sm:text-base sm:leading-relaxed text-white/75">
             {item.synopsis}
           </p>
 
@@ -258,15 +283,15 @@ function ResultCard({
             item.cast?.length ||
             item.language ||
             release) && (
-            <dl className="mt-8 grid gap-x-7 gap-y-5 border-y border-white/10 py-6 sm:grid-cols-2">
+            <dl className="mt-6 grid gap-x-6 gap-y-4 border-y border-white/10 py-5 grid-cols-2">
               <Detail label={creatorsLabel} value={item.creators?.join(", ")} />
               <Detail label="Starring" value={item.cast?.join(", ")} />
-              <Detail label="Original language" value={item.language} />
+              <Detail label="Language" value={item.language} />
               <Detail label="Released" value={release} />
             </dl>
           )}
 
-          <div className="mt-auto pt-8">
+          <div className="mt-auto pt-6">
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
@@ -293,7 +318,7 @@ function ResultCard({
                   rel="noreferrer"
                   className="pf-text-link"
                 >
-                  Watch trailer ↗
+                  Trailer ↗
                 </a>
               )}
               {item.externalUrl && (
@@ -309,7 +334,7 @@ function ResultCard({
             </div>
             {saveMessage && (
               <p
-                className={`mt-4 text-xs ${
+                className={`mt-3 text-xs ${
                   saved ? "text-[var(--lime)]" : "text-[var(--danger)]"
                 }`}
                 role="status"
@@ -317,7 +342,7 @@ function ResultCard({
                 {saveMessage}
               </p>
             )}
-            <p className="mt-6 max-w-3xl border-l border-[var(--lime)]/60 pl-3 text-[10px] leading-5 text-white/35">
+            <p className="mt-5 max-w-3xl border-l border-[var(--lime)]/60 pl-3 text-[10px] leading-relaxed text-white/40">
               {item.sourceNote}
             </p>
           </div>
@@ -334,6 +359,7 @@ export function MediaRandomizer() {
   const [poolSize, setPoolSize] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [chartSheetOpen, setChartSheetOpen] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
 
   const sources = useMemo(() => getSourcesForCategory(category), [category]);
@@ -408,65 +434,84 @@ export function MediaRandomizer() {
   const selectionLabel = `${CATEGORY_LABELS[category]} · ${selectedSource.label}`;
 
   return (
-    <main className="pf-page min-h-screen">
+    <main className="pf-page min-h-screen pb-24 sm:pb-12">
       <div className="grain" />
       <SiteHeader current="watch" />
 
-      <section className="pf-container pb-12 pt-10 sm:pt-14">
-        <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_minmax(24rem,36rem)] lg:items-end">
+      <section className="pf-container pb-12 pt-6 sm:pt-12">
+        {/* Responsive Hero Section */}
+        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_minmax(22rem,32rem)] lg:items-end">
           <div>
             <p className="pf-kicker text-[var(--lime)]">
               Global film and television charts
             </p>
-            <h1 className="display-serif mt-4 max-w-4xl text-[clamp(3.3rem,8vw,7rem)] font-bold leading-[0.82] tracking-[-0.06em] text-white">
+            <h1 className="display-serif mt-3 max-w-4xl text-[clamp(2.5rem,7vw,6.5rem)] font-bold leading-[0.85] tracking-[-0.05em] text-white">
               Let the charts
               <br />
               <em className="font-normal text-white/45">make the call.</em>
             </h1>
-            <p className="mt-6 max-w-xl text-sm leading-7 text-white/48 sm:text-base">
+            <p className="mt-4 max-w-xl text-xs sm:text-sm leading-relaxed text-white/50">
               One strong recommendation drawn from popular, acclaimed, and
               specialist lists. No endless grid. No decision fatigue.
             </p>
           </div>
 
+          {/* Interactive Modern Picker Controls */}
           <div className="pf-picker">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="pf-field">
-                <span>I want to watch</span>
-                <select
-                  value={category}
-                  onChange={(event) =>
-                    chooseCategory(event.target.value as MediaCategory)
-                  }
-                >
-                  {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
+            <div className="space-y-4">
+              <div>
+                <span className="pf-field-label">Category</span>
+                <div className="mt-2 flex flex-wrap gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10">
+                  {(Object.keys(CATEGORY_LABELS) as MediaCategory[]).map((catKey) => (
+                    <button
+                      key={catKey}
+                      type="button"
+                      onClick={() => chooseCategory(catKey)}
+                      className={`pf-pill-button ${category === catKey ? "is-active" : ""}`}
+                    >
+                      {CATEGORY_LABELS[catKey]}
+                    </button>
                   ))}
-                </select>
-              </label>
-              <label className="pf-field">
-                <span>Choose a chart</span>
-                <select
-                  value={source}
-                  onChange={(event) =>
-                    chooseSource(event.target.value as SourceId)
-                  }
+                </div>
+              </div>
+
+              <div>
+                <span className="pf-field-label">Chart Source</span>
+                <button
+                  type="button"
+                  onClick={() => setChartSheetOpen(true)}
+                  className="mt-2 w-full flex items-center justify-between p-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition text-left"
                 >
-                  {sources.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <div>
+                    <p className="text-xs font-bold text-white uppercase tracking-wider">
+                      {selectedSource.label}
+                    </p>
+                    <p className="text-[11px] text-white/50 truncate max-w-xs sm:max-w-sm mt-0.5">
+                      {selectedSource.description}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-[var(--lime)] px-2.5 py-1 rounded-full border border-[var(--lime)]/30 bg-[var(--lime)]/10">
+                    Change ▾
+                  </span>
+                </button>
+              </div>
             </div>
-            <p className="mt-4 text-xs leading-5 text-white/38">
-              {selectedSource.description}
-            </p>
           </div>
         </div>
+
+        {/* Chart Selection Bottom Sheet */}
+        <ChartSheet
+          isOpen={chartSheetOpen}
+          onClose={() => setChartSheetOpen(false)}
+          title={`Charts for ${CATEGORY_LABELS[category]}`}
+          options={sources.map((s) => ({
+            id: s.id,
+            label: s.label,
+            description: s.description,
+          }))}
+          selectedId={source}
+          onSelect={(id) => chooseSource(id as SourceId)}
+        />
 
         <div aria-live="polite" aria-busy={loading}>
           {loading ? (
@@ -498,6 +543,19 @@ export function MediaRandomizer() {
             {error}
           </p>
         )}
+
+        {/* Sticky Mobile Floating Action Bar for draw CTA */}
+        <div className="sm:hidden fixed bottom-16 inset-x-0 z-30 p-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none flex justify-center">
+          <button
+            type="button"
+            onClick={() => roll()}
+            disabled={loading}
+            className="pointer-events-auto pf-button pf-button-primary shadow-2xl px-6 py-3.5 rounded-full text-xs font-black"
+          >
+            <span aria-hidden="true">↻</span>
+            {loading ? "Drawing…" : "Draw Pick Now"}
+          </button>
+        </div>
 
         <footer className="pf-footer">
           <p>Live upstream charts · Uniform server-side randomization</p>

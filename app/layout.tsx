@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { AppProviders } from "@/components/app-providers";
+import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const siteUrl = getSiteUrl();
 const siteDescription =
   "Draw one excellent film, series, album, song, anime, documentary, or book from the world's best ranked lists.";
 

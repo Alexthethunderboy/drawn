@@ -7,6 +7,7 @@ export const MUSIC_SOURCE_IDS = [
 ] as const;
 
 export type MusicSourceId = (typeof MUSIC_SOURCE_IDS)[number];
+export type MusicMediaType = "all" | "album" | "track";
 
 export interface MusicSourceDefinition {
   id: MusicSourceId;
