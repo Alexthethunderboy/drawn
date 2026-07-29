@@ -156,8 +156,8 @@ function MusicResult({
       <div className="relative grid md:grid-cols-[minmax(18rem,24rem)_1fr]">
         
         {/* Mobile Header Banner */}
-        <div className="md:hidden flex items-start gap-4 p-5 border-b border-white/10 bg-black/40 backdrop-blur-md">
-          <div className="relative size-24 shrink-0 aspect-square overflow-hidden rounded-md border border-white/15 bg-[#11130f] shadow-lg">
+        <div className="md:hidden grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-4 p-4 border-b border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="relative size-28 shrink-0 aspect-square overflow-hidden rounded-lg border border-white/15 bg-[#11130f] shadow-lg">
             <TrackArtwork item={item} />
           </div>
           <div className="min-w-0 flex-1">
@@ -167,10 +167,10 @@ function MusicResult({
               </span>
               {item.rank && <span className="pf-rank text-[9px] px-2 py-0.5">#{item.rank}</span>}
             </div>
-            <h2 className="display-serif mt-1.5 text-2xl font-bold leading-tight text-white truncate">
+            <h2 className="display-serif mt-2 text-[1.7rem] font-bold leading-[0.95] tracking-[-0.035em] text-white break-words">
               {item.title}
             </h2>
-            <p className="mt-0.5 text-xs text-[var(--coral)] font-bold truncate">
+            <p className="mt-1 text-xs text-[var(--coral)] font-bold break-words">
               {item.artist}
             </p>
           </div>
@@ -244,7 +244,7 @@ function MusicResult({
           </p>
 
           <div className="mt-auto pt-6">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid grid-cols-1 gap-2 min-[440px]:flex min-[440px]:flex-wrap min-[440px]:items-center min-[440px]:gap-3">
               <button
                 type="button"
                 onClick={roll}
@@ -410,7 +410,7 @@ export function MusicRandomizer() {
               <div
                 role="group"
                 aria-label="Media type"
-                className="mt-2 inline-flex w-full rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-1 gap-1"
+                className="mt-2 grid w-full grid-cols-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-1 gap-1"
               >
                 {MEDIA_TYPE_PILLS.map((pill) => (
                   <button
@@ -419,7 +419,7 @@ export function MusicRandomizer() {
                     aria-pressed={mediaType === pill.id}
                     onClick={() => chooseMediaType(pill.id)}
                     className={
-                      `flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold tracking-wide transition-all duration-200 ` +
+                      `min-w-0 flex items-center justify-center gap-1 px-1.5 sm:px-3 py-2.5 rounded-lg text-[11px] sm:text-xs font-bold tracking-wide transition-all duration-200 ` +
                       (mediaType === pill.id
                         ? "bg-[var(--coral)] text-black shadow-lg shadow-[var(--coral)]/30 scale-[1.03]"
                         : "text-white/50 hover:text-white hover:bg-white/10")
@@ -438,17 +438,17 @@ export function MusicRandomizer() {
               <button
                 type="button"
                 onClick={() => setChartSheetOpen(true)}
-                className="mt-2 w-full flex items-center justify-between p-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition text-left"
+                className="mt-2 w-full min-w-0 flex items-center justify-between gap-3 p-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition text-left"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-bold text-white uppercase tracking-wider">
                     {selectedSource.label}
                   </p>
-                  <p className="text-[11px] text-white/50 truncate max-w-xs sm:max-w-sm mt-0.5">
+                  <p className="text-[11px] text-white/50 truncate mt-0.5">
                     {selectedSource.description}
                   </p>
                 </div>
-                <span className="text-xs font-bold text-[var(--coral)] px-2.5 py-1 rounded-full border border-[var(--coral)]/30 bg-[var(--coral)]/10">
+                <span className="shrink-0 text-[10px] sm:text-xs font-bold text-[var(--coral)] px-2.5 py-1 rounded-full border border-[var(--coral)]/30 bg-[var(--coral)]/10">
                   Change ▾
                 </span>
               </button>
@@ -504,7 +504,7 @@ export function MusicRandomizer() {
         )}
 
         {/* Sticky Mobile Floating Action Bar */}
-        <div className="sm:hidden fixed bottom-16 inset-x-0 z-30 p-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none flex justify-center">
+        <div className="pf-mobile-draw-dock sm:hidden">
           <button
             type="button"
             onClick={() => roll()}

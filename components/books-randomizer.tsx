@@ -117,8 +117,8 @@ function BookResult({
       <div className="relative grid md:grid-cols-[minmax(17rem,21rem)_1fr]">
         
         {/* Mobile Header Banner */}
-        <div className="md:hidden flex items-start gap-4 p-5 border-b border-white/10 bg-black/40 backdrop-blur-md">
-          <div className="relative w-24 shrink-0 aspect-[2/3] overflow-hidden rounded-md border border-white/15 bg-[#11130f] shadow-lg">
+        <div className="md:hidden grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-4 p-4 border-b border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="relative w-28 shrink-0 aspect-[2/3] overflow-hidden rounded-lg border border-white/15 bg-[#11130f] shadow-lg">
             <BookCover item={item} />
           </div>
           <div className="min-w-0 flex-1">
@@ -128,10 +128,10 @@ function BookResult({
               </span>
               {item.rank && <span className="pf-rank text-[9px] px-2 py-0.5">#{item.rank}</span>}
             </div>
-            <h2 className="display-serif mt-1.5 text-2xl font-bold leading-tight text-white truncate">
+            <h2 className="display-serif mt-2 text-[1.7rem] font-bold leading-[0.95] tracking-[-0.035em] text-white break-words">
               {item.title}
             </h2>
-            <p className="mt-0.5 text-xs text-[var(--lime)] font-bold truncate">
+            <p className="mt-1 text-xs text-[var(--lime)] font-bold break-words">
               {item.author}
             </p>
           </div>
@@ -181,7 +181,7 @@ function BookResult({
           </p>
 
           <div className="mt-auto pt-6">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid grid-cols-1 gap-2 min-[440px]:flex min-[440px]:flex-wrap min-[440px]:items-center min-[440px]:gap-3">
               <button
                 type="button"
                 onClick={roll}
@@ -330,17 +330,17 @@ export function BooksRandomizer() {
               <button
                 type="button"
                 onClick={() => setChartSheetOpen(true)}
-                className="mt-2 w-full flex items-center justify-between p-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition text-left"
+                className="mt-2 w-full min-w-0 flex items-center justify-between gap-3 p-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition text-left"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-bold text-white uppercase tracking-wider">
                     {selectedSource.label}
                   </p>
-                  <p className="text-[11px] text-white/50 truncate max-w-xs sm:max-w-sm mt-0.5">
+                  <p className="text-[11px] text-white/50 truncate mt-0.5">
                     {selectedSource.description}
                   </p>
                 </div>
-                <span className="text-xs font-bold text-[var(--lime)] px-2.5 py-1 rounded-full border border-[var(--lime)]/30 bg-[var(--lime)]/10">
+                <span className="shrink-0 text-[10px] sm:text-xs font-bold text-[var(--lime)] px-2.5 py-1 rounded-full border border-[var(--lime)]/30 bg-[var(--lime)]/10">
                   Change ▾
                 </span>
               </button>
@@ -407,7 +407,7 @@ export function BooksRandomizer() {
         )}
 
         {/* Sticky Mobile Floating Action Bar */}
-        <div className="sm:hidden fixed bottom-16 inset-x-0 z-30 p-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none flex justify-center">
+        <div className="pf-mobile-draw-dock sm:hidden">
           <button
             type="button"
             onClick={() => roll()}

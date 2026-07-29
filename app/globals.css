@@ -27,6 +27,7 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
+  overflow-x: clip;
   color: white;
   background: var(--ink);
   font-family:
@@ -253,6 +254,9 @@ audio:focus-visible {
 
 .pf-picker {
   position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 1.15rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-top-color: rgba(216, 255, 79, 0.65);
@@ -1038,8 +1042,10 @@ audio:focus-visible {
 .pf-mobile-nav {
   position: fixed;
   bottom: 0;
-  inset-x: 0;
+  right: 0;
+  left: 0;
   z-index: 40;
+  width: 100%;
   display: flex;
   height: calc(3.6rem + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -1073,6 +1079,27 @@ audio:focus-visible {
 .pf-mobile-nav-item[aria-current="page"] {
   color: var(--lime);
   background: rgba(216, 255, 79, 0.06);
+}
+
+.pf-mobile-draw-dock {
+  position: fixed;
+  right: 0;
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  z-index: 35;
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 0.75rem 0.65rem;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(8, 10, 8, 0.98), rgba(8, 10, 8, 0.72) 58%, transparent);
+}
+
+.pf-mobile-draw-dock .pf-button {
+  width: min(100%, 22rem);
+  min-height: 3.15rem;
+  pointer-events: auto;
+  border-radius: 999px;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.55);
 }
 
 .pf-page-music .pf-mobile-nav-item:hover,
@@ -1581,4 +1608,186 @@ audio:focus-visible {
   }
 }
 
+/* ==========================================================================
+   Mobile layout — shared, deliberate, and thumb-friendly
+   ========================================================================== */
+@media (max-width: 639px) {
+  .pf-nav {
+    display: none;
+  }
 
+  .pf-page {
+    overflow: clip;
+  }
+
+  .pf-container {
+    width: calc(100% - 1.25rem);
+  }
+
+  .pf-header-inner {
+    width: calc(100% - 1.25rem);
+  }
+
+  .pf-profile-slot button[aria-controls="profile-and-watchlist"] {
+    max-width: 7.25rem;
+    min-height: 2.75rem;
+    padding-inline: 0.9rem;
+  }
+
+  .pf-picker {
+    padding: 0.85rem;
+    border-radius: 1rem;
+  }
+
+  .pf-picker button {
+    min-width: 0;
+  }
+
+  .pf-picker button > div {
+    min-width: 0;
+  }
+
+  .pf-picker button > span:last-child {
+    flex: 0 0 auto;
+  }
+
+  .pf-container > .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-container > .grid > * {
+    min-width: 0;
+  }
+
+  .pf-pill-button {
+    min-width: 0;
+    min-height: 2.75rem;
+    padding: 0.65rem 0.35rem;
+  }
+
+  .pf-feature-card {
+    width: 100%;
+  }
+
+  .draw-panel__stage {
+    min-height: 15.5rem;
+  }
+
+  .draw-deck-3d {
+    width: min(54%, 10rem);
+  }
+
+  .draw-panel__stage-note {
+    right: 1rem;
+    bottom: 0.85rem;
+    left: 1rem;
+    text-align: center;
+  }
+
+  .draw-panel__content {
+    padding: 1.5rem 1rem 1.35rem;
+  }
+
+  .draw-panel__content h2 {
+    font-size: clamp(2.25rem, 13vw, 3.5rem);
+  }
+
+  .draw-panel__button {
+    width: 100%;
+    min-height: 3.25rem;
+    margin-top: 1.25rem;
+  }
+
+  .draw-ticker {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 0.7rem;
+  }
+
+  .draw-ticker__text {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.55rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pf-rating {
+    min-height: 2rem;
+    padding: 0.45rem 0.58rem;
+  }
+
+  .pf-fact:not(:last-child)::after {
+    display: none;
+  }
+
+  .pf-button {
+    min-height: 3rem;
+  }
+
+  .pf-text-link {
+    min-height: 2.75rem;
+    justify-content: center;
+    padding-inline: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.65rem;
+  }
+
+  .pf-audio {
+    padding: 0.75rem;
+  }
+
+  .pf-footer {
+    margin-top: 1.5rem;
+    padding-bottom: 8.5rem;
+  }
+
+  .pf-sheet-container {
+    max-height: min(88dvh, 48rem);
+    border-radius: 1.25rem 1.25rem 0 0;
+  }
+
+  .pf-sheet-header {
+    padding: 0.9rem 1rem 0.8rem;
+  }
+
+  .pf-sheet-body {
+    padding: 0.85rem 0.75rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pf-chart-option {
+    min-height: 4.5rem;
+    padding: 0.85rem;
+  }
+
+  .pf-drawer-panel {
+    height: min(88dvh, 48rem);
+  }
+
+  .pf-mobile-nav {
+    height: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pf-mobile-nav-item {
+    min-width: 0;
+    min-height: 3.5rem;
+    font-size: 0.58rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .drawn-symbol {
+    width: 1.85rem;
+    height: 1.85rem;
+  }
+
+  .pf-container,
+  .pf-header-inner {
+    width: calc(100% - 0.85rem);
+  }
+
+  .pf-profile-slot button[aria-controls="profile-and-watchlist"] {
+    max-width: 6.5rem;
+    padding-inline: 0.65rem;
+  }
+}
