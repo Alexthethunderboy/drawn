@@ -1,98 +1,90 @@
 # DRAWN
 
-A server-randomized culture picker built with Next.js App Router,
-React, Tailwind CSS, a lightweight username/PIN profile system, and a
-deliberately broad set of ranking providers.
+**Drawn from the best.** A culture picker for films, series, anime, documentaries, music, and books.
 
-**Drawn from the best.** DRAWN chooses one excellent film, series, anime,
-documentary, album, song, or book from credible global rankings so the user can
-spend less time choosing and more time enjoying the result.
+Choose a category and ranking source, draw one result, and save it to a browser-local profile.
 
-## Chart routing
+[Try DRAWN](https://drawn-eta.vercel.app/) · [Source](https://github.com/Alexthethunderboy/drawn) · [CI runs](https://github.com/Alexthethunderboy/drawn/actions)
 
-| Chart | Movies | TV | Anime | Docs | What it actually means |
-| --- | :---: | :---: | :---: | :---: | --- |
-| All charts | ✓ | ✓ | ✓ | ✓ | Equal-cap blend of every configured chart |
-| Trakt Popular | ✓ | ✓ | — | ✓ | Trakt popularity (rating percentage + rating volume) |
-| Trakt Trending | ✓ | ✓ | — | ✓ | Most watched over the last 24 hours |
-| Rotten Tomatoes 80%+ | ✓ | — | — | ✓ | Trakt `rt_meters=80-100` filter |
-| IMDb Top 1000 | ✓ | — | — | — | Paginated dataset through the selected RapidAPI provider |
-| IMDb 8.0+ | ✓ | ✓ | — | ✓ | Trakt `imdb_ratings=8.0-10.0` and 25k+ vote filter |
-| Metacritic 80+ | ✓ | — | — | ✓ | Trakt `metascores=80-100` filter |
-| TMDb Popular | ✓ | ✓ | — | ✓ | Native TMDb list/discover ordering |
-| TMDb Top Rated | ✓ | ✓ | — | ✓ | Native TMDb list/discover ordering with a vote floor |
-| MyAnimeList Top | — | — | ✓ | — | Jikan `/v4/top/anime` |
-| MyAnimeList Popular | — | — | ✓ | — | Jikan top anime with `filter=bypopularity` |
-| Letterboxd Most Fans 250 | ✓ | — | — | — | Complete official list snapshot |
-| Rotten Tomatoes Anime 100 | — | — | ✓ | — | Exact editorial list with Tomatometer scores |
-| IMDb Animated 35 | — | — | ✓ | — | Exact supplied IMDb list |
-| Rotten Tomatoes Docs 100 | — | — | — | ✓ | Exact editorial ranking |
-| Letterboxd Documentary 250 | — | — | — | ✓ | Complete official list snapshot |
+![drawn — existing portfolio capture](https://raw.githubusercontent.com/Alexthethunderboy/Portfolio/b4c8f605bdb311f2be00d14855b4914a3d662cf9/public/projects/previews/drawn.jpg)
 
-The UI intentionally does **not** call the Trakt RT filter “Certified Fresh.”
-Certified Fresh is a Rotten Tomatoes designation with criteria beyond a simple
-Tomatometer threshold. Likewise, IMDb 8.0+ is a live filtered pool, while the
-RapidAPI source is the separate Top 1000 dataset selected for this project.
+Existing portfolio capture, verified 8 October 2026; not evidence of current uptime or completed validation.
+
+## What it does
+
+- Draws film and television picks from curated snapshots and optional live chart providers.
+- Offers dedicated [music](https://drawn-eta.vercel.app/music) and [book](https://drawn-eta.vercel.app/books) experiences.
+- Enriches the selected result with artwork and available catalogue information.
+- Saves picks under lightweight username/PIN profiles in the same browser.
+
+Movies, anime, documentaries, music, and books have local catalogue sources that do not require API credentials. Television charts depend on configured providers. Optional services add more sources and richer result details.
+
+## Status and limits
+
+Profiles and saved picks are stored in the browser. They do not sync between devices, there is no email recovery, and clearing site data removes them. The profile system is intended for media lists, not sensitive personal information.
+
+External providers can fail, omit artwork, or change availability. Supported categories have local fallback sources. The checked-in curated catalogue is a snapshot dated **27 July 2026**, not a continuously updated ranking.
+
+A CI workflow is configured, but its [latest recorded run](https://github.com/Alexthethunderboy/drawn/actions/runs/30458348423), on commit `5527266`, is failed. The check-run annotation says: “The job was not started because your account is locked due to a billing issue.” No job steps ran; this is an account billing blocker, not a demonstrated code/test failure. Do not treat the presence of the workflow as proof that validation passes.
+
+## Design and engineering choices
+
+### A focused decision
+
+The interface returns one pick rather than another endless catalogue. Ranking sources remain explicit so the basis of a result is visible.
+
+### Provider isolation and fallbacks
+
+For film and television rolls, the server validates the category/source pairing and queries relevant providers. “All charts” takes up to 25 candidates from each successful source before deduplication, so a larger response does not dominate solely through its page size.
+
+Local lists keep supported categories usable when live charts are unavailable. A fallback result carries a source note.
+
+### Random selection on the server
+
+The final candidate pool is sampled with Web Crypto and rejection sampling to avoid modulo bias. Only the chosen item is enriched. This describes selection from the assembled pool, not a guarantee of equal representation across every title in every provider’s full catalogue.
+
+### Lightweight local profiles
+
+PINs are salted and PBKDF2-hashed before storage. This is a convenience boundary for browser-local lists; it does not provide cross-device accounts or a recovery service.
+
+## Stack
+
+- Next.js App Router and React
+- TypeScript
+- Tailwind CSS
+- Node test runner through tsx
+- Optional server-side catalogue APIs
 
 ## Local setup
 
+Use **Node.js 24** to match the checked-in CI configuration.
+
+The commands below match the repository and CI declarations. They were not rerun as part of this documentation draft.
+
 ```bash
-npm install
+git clone https://github.com/Alexthethunderboy/drawn.git
+cd drawn
+npm ci
 cp .env.example .env.local
 npm run dev
 ```
 
-The browser-verified local lists need no key, so Movies, Anime, Docs, Music,
-and Books work immediately. Add any combination of the following providers;
-“All charts” skips unconfigured or temporarily failed sources and uses all
-successful ones:
+Open http://localhost:3000.
 
-- `TRAKT_CLIENT_ID`: the client ID from a Trakt API application.
-- `TMDB_ACCESS_TOKEN`: the TMDb API Read Access Token (Bearer token).
-- `RAPIDAPI_KEY`: enables the IMDb Top 1000 provider after that API is
-  subscribed to in RapidAPI.
-- `RAPIDAPI_IMDB_HOST`: the selected provider host.
-- `RAPIDAPI_IMDB_TOP1000_PATH`: the paginated path template
-  (`/list/{page}`).
-- `RAPIDAPI_IMDB_PAGE_COUNT`: the provider's page count. The default `100`
-  assumes ten records per page and can be corrected if the subscribed response
-  uses a different page size.
-- `OMDB_API_KEY`: optional. Enriches the one selected title with actual IMDb,
-  Rotten Tomatoes, and Metacritic badge values.
+For a no-key demo, keep provider credentials blank. The copy command above uses a POSIX shell; on other systems, copy .env.example to .env.local using the equivalent file operation.
 
-All provider secrets stay server-side.
+## Optional configuration
 
-## Username/PIN profiles
+The complete configuration reference is [.env.example](.env.example).
 
-DRAWN keeps lightweight profiles and saved picks in the browser rather than
-using Supabase or another hosted database. A visitor can create a username with
-a 4–8 digit PIN and keep separate saved lists on that device. PINs are salted
-and PBKDF2-hashed before local storage. Five incorrect attempts lock sign-in for
-15 minutes.
+- **Film and TV:** Trakt, TMDb, and the selected RapidAPI IMDb provider add live sources. OMDb supplies optional rating enrichment.
+- **Music:** local Rolling Stone data and credential-free ListenBrainz charts supply candidates. iTunes enriches selected results; Spotify credentials optionally add catalogue matches.
+- **Books:** local lists supply candidates; Open Library and Google Books provide optional cover enrichment.
+- **Canonical URL:** set NEXT_PUBLIC_SITE_URL for the intended deployment.
 
-There is intentionally no email collection or recovery flow. This lightweight
-profile system is appropriate for a media watchlist, not sensitive personal
-data. Profiles do not sync between browsers or devices, and clearing site data
-removes them permanently.
+Keep server-only credentials out of client code and Git. Provider subscriptions, access restrictions, and data terms apply independently.
 
-Existing browser-local saves from `pickfilm.watchlist.v1` are migrated into the
-first profile used in that browser.
-
-## Server flow
-
-`GET /api/roll?category=movies&source=all`:
-
-1. validates the category/source compatibility matrix;
-2. reads exact local rankings and queries relevant live upstreams server-side
-   with timeouts and response-shape checks;
-3. caps blended provider pools equally and deduplicates by external IDs/title;
-4. chooses a uniform random index using rejection sampling over Web Crypto;
-5. enriches only the chosen item through TMDb and OMDb when configured,
-   including poster/backdrop artwork, synopsis, runtime, genres, ratings,
-   certification, release date, creators, cast, and trailer links.
-
-List fetches use provider-appropriate revalidation while every roll response
-uses `no-store`, keeping the chart data efficient and the selection fresh.
+This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## Verification
 
@@ -102,84 +94,35 @@ npm test
 npm run build
 ```
 
-GitHub Actions runs the same checks for pull requests and pushes to `main`.
+The [CI workflow](.github/workflows/ci.yml) installs with npm ci and declares these checks for pull requests and pushes to main. See the status caveat above before assuming they are passing.
 
-## Deployment
+The [tests](tests) cover catalogue rank structure, random selection, profile/authentication helpers, saved lists, music behavior, and RapidAPI handling. These tests do not by themselves establish live-provider uptime or end-to-end browser accessibility.
 
-The application uses the native Next.js build and is connected to Vercel
-through the `main` branch. Add any optional provider credentials from
-`.env.example` to the Vercel project’s Development, Preview, and Production
-environments; never commit their values. Canonical metadata uses
-`NEXT_PUBLIC_SITE_URL` when supplied and otherwise falls back to Vercel’s
-production-domain system variable.
+No npm lint script is currently defined.
 
-## Provider references
+## Code map
 
-- [Trakt API filters](https://docs.trakt.tv/docs/filters)
-- [Trakt popular movies](https://docs.trakt.tv/reference/getmoviespopular)
-- [TMDb movie discover](https://developer.themoviedb.org/reference/discover-movie)
-- [TMDb TV discover](https://developer.themoviedb.org/reference/discover-tv)
-- [Jikan v4](https://docs.api.jikan.moe/)
-- [IMDb Top 1000 search](https://www.imdb.com/search/title/?groups=top_1000&sort=user_rating%2Cdesc)
-- [Selected IMDb Top 1000 RapidAPI](https://rapidapi.com/robotfa-robotfa-default/api/imdb-top-1000-movies-series)
-- [OMDb API](https://www.omdbapi.com/)
+| Path | Purpose |
+| --- | --- |
+| app/ | Pages and API route handlers |
+| components/ | Picker interfaces, navigation, profiles, and saved-list controls |
+| lib/media/ | Film/TV provider routing, blending, selection, and enrichment |
+| lib/music/ | Music sources, selection, and enrichment |
+| lib/books/ | Book catalogue and result handling |
+| lib/auth/, lib/profile/, lib/watchlist/ | Browser-local profile and saved-list behavior |
+| data/curated-lists.json | Dated catalogue snapshots with source references |
+| tests/ | Automated unit-level checks |
 
-This product uses the TMDB API but is not endorsed or certified by TMDB.
+## Further references
 
-## Music
+- [Media routing and fallback implementation](lib/media/index.ts)
+- [Random selection implementation](lib/media/random.ts)
+- [Catalogue rank tests](tests/catalog.test.ts)
+- [Brand identity](docs/brand-identity.md)
+- [Curated data and original source links](data/curated-lists.json)
 
-The dedicated `/music` page rolls songs and albums from:
+No project-wide open-source license is currently included. Third-party source data, artwork, and service terms require their own attribution and rights review.
 
-| Chart | Credential | Meaning |
-| --- | --- | --- |
-| Rolling Stone 500 Albums | None | Complete browser-verified all-time ranking stored locally |
-| ListenBrainz week | None | Sitewide top recordings for the current week |
-| ListenBrainz month | None | Sitewide top recordings for the current month |
-| ListenBrainz all time | None | Sitewide all-time recording chart |
+---
 
-“All charts” blends the stored album canon with three worldwide,
-credential-free ListenBrainz periods before deduplication. If ListenBrainz is
-unavailable, the Rolling Stone catalog keeps the roll functional. The no-key
-iTunes Search API enriches only the selected song or album with artwork and an
-Apple Music link; track previews are added when available.
-
-When `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` are configured, the
-server also matches each selected chart track against Spotify and adds its
-canonical album metadata and “Open in Spotify” link. `SPOTIFY_MARKET` and
-`ITUNES_STOREFRONT` default to `US` only for catalog availability; neither
-setting influences the worldwide chart ranking. Spotify is enrichment rather
-than a chart source because the current Development Mode Web API does not
-expose a public global chart or the contents of Spotify-owned playlists.
-
-Tracks and albums use the same profile-backed Saved menu as movies and shows.
-
-## Books
-
-The `/books` page uses two exact, browser-verified local sources:
-
-| List | Local entries |
-| --- | ---: |
-| Goodreads Best Selling Books of All Time | 100 |
-| The Greatest Books, supplied page 2 | 25 (ranks 26–50) |
-
-Open Library and Google Books are optional, credential-free cover enrichment
-for the one selected book. The UI cycles through available cover candidates
-and uses a designed DRAWN edition when upstream artwork is unavailable.
-
-## Browser-verified catalogs
-
-`data/curated-lists.json` contains ranks and essential factual metadata from
-the supplied Letterboxd, Rotten Tomatoes, IMDb, Goodreads, The Greatest Books,
-and Rolling Stone pages. Tests enforce exact contiguous ordering for all eight
-catalogs, including ranks 1–500 for Rolling Stone and both Letterboxd Top 250
-lists. Editorial prose is not copied into the catalog.
-
-Music references:
-
-- [ListenBrainz sitewide recording statistics](https://listenbrainz.readthedocs.io/en/latest/users/api/statistics.html)
-- [iTunes Search API](https://performance-partners.apple.com/search-api)
-- [Spotify Client Credentials flow](https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow)
-- [Spotify Search endpoint](https://developer.spotify.com/documentation/web-api/reference/search)
-- [Rolling Stone 500 Greatest Albums](https://www.rollingstone.com/music/music-lists/best-albums-of-all-time-1062063/)
-- [Goodreads Best Selling Books of All Time](https://www.goodreads.com/list/show/33934.Best_Selling_Books_of_All_Time)
-- [The Greatest Books](https://thegreatestbooks.org/page/2)
+Built by [Thunderboy](https://thunderboy.vercel.app).
